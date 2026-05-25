@@ -9,10 +9,10 @@ final class ClickOpsTest extends TestCase {
             ->withChild(new Node('h1'))
             ->withChild((new Node('p'))->withChild(new Node('span')));
     }
-    public function testSwapTag(): void {
+    public function testRenameTag(): void {
         $expected = (new Node('div'))->withChild(new Node('h2'))
             ->withChild((new Node('p'))->withChild(new Node('span')));
-        $actual = TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[0],'with'=>'h2']);
+        $actual = TransformEngine::applyClickOp($this->tree(), ['type'=>'rename','path'=>[0],'with'=>'h2']);
         NodeAssert::assertEquals($expected, $actual);
     }
     public function testUnwrap(): void {
@@ -80,9 +80,35 @@ final class ClickOpsTest extends TestCase {
         $this->expectException(\App\ClickOpError::class);
         TransformEngine::applyClickOp($this->tree(), ['type'=>'frobnicate','path'=>[0]]);
     }
-    public function testSwapMissingWithThrows(): void {
+    public function testRenameMissingWithThrows(): void {
         $this->expectException(\App\ClickOpError::class);
-        TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[0]]);
+        TransformEngine::applyClickOp($this->tree(), ['type'=>'rename','path'=>[0]]);
+    }
+    public function testSwapWithNextSibling(): void {
+        // Tree: <div><h1/><p><span/></p></div>
+        // swap path [0] with its next sibling → <div><p><span/></p><h1/></div>
+        $expected = (new Node('div'))
+            ->withChild((new Node('p'))->withChild(new Node('span')))
+            ->withChild(new Node('h1'));
+        $actual = TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[0]]);
+        NodeAssert::assertEquals($expected, $actual);
+    }
+    public function testSwapNoNextSiblingThrows(): void {
+        // Last child has no next sibling → bad_path
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[1]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('bad_path', $e->code);
+        }
+    }
+    public function testSwapRootThrows(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('bad_path', $e->code);
+        }
     }
     // try/catch idiom (rather than expectException) so we can inspect $e->code on the caught exception
     public function testClickOpErrorCarriesCode(): void {

@@ -2,7 +2,7 @@
 namespace App;
 
 final class ClickOps {
-    private const VALID_TYPES = ['swap', 'unwrap', 'wrap', 'delete', 'move'];
+    private const VALID_TYPES = ['swap', 'rename', 'unwrap', 'wrap', 'delete', 'move'];
 
     public static function apply(Node $root, array $op): Node {
         $type = $op['type'] ?? '';
@@ -15,6 +15,7 @@ final class ClickOps {
 
         return match ($type) {
             'swap'   => self::swap($root, $path, $op),
+            'rename' => self::rename($root, $path, $op),
             'unwrap' => self::unwrap($root, $path),
             'wrap'   => self::wrap($root, $path, $op),
             'delete' => self::delete($root, $path),
@@ -27,11 +28,32 @@ final class ClickOps {
     // -------------------------------------------------------------------------
 
     private static function swap(Node $root, array $path, array $op): Node {
+        if ($path === []) {
+            throw new ClickOpError('bad_path', 'swap requires a non-empty path (root has no siblings)');
+        }
+        $parentPath = array_slice($path, 0, -1);
+        $idx        = $path[count($path) - 1];
+        $parent     = self::getAt($root, $parentPath);
+        if ($idx + 1 >= count($parent->children)) {
+            throw new ClickOpError('bad_path', "swap: node at depth " . count($path) . " index $idx has no next sibling");
+        }
+        $a = $parent->children[$idx];
+        $b = $parent->children[$idx + 1];
+        $newChildren = $parent->children;
+        $newChildren[$idx]     = $b;
+        $newChildren[$idx + 1] = $a;
+        $newParent = new Node($parent->tag, $parent->attrs, $newChildren, $parent->text, $parent->appliedRules);
+        if ($parentPath === []) return $newParent;
+        return self::replaceAt($root, $parentPath, $newParent);
+    }
+
+    private static function rename(Node $root, array $path, array $op): Node {
         if (!isset($op['with']) || $op['with'] === '') {
-            throw new ClickOpError('missing_with', "swap requires a non-empty 'with' tag");
+            throw new ClickOpError('missing_with', "rename requires a non-empty 'with' tag");
         }
         $node = self::getAt($root, $path);
         $newNode = new Node($op['with'], $node->attrs, $node->children, $node->text, $node->appliedRules);
+        if ($path === []) return $newNode;
         return self::replaceAt($root, $path, $newNode);
     }
 
