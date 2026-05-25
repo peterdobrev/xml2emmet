@@ -17,4 +17,19 @@ final class XmlParseTest extends TestCase {
         $expected = (new Node('a'))->withAttr('href','/x')->withAttr('id','y');
         NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<a href="/x" id="y"/>'));
     }
+    public function testC4Children(): void {
+        $expected = (new Node('div'))->withChild(new Node('h1'))->withChild(new Node('p'));
+        NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<div><h1/><p/></div>'));
+    }
+    public function testC5TextOnly(): void {
+        $expected = (new Node('p'))->withText('hello');
+        NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<p>hello</p>'));
+    }
+    public function testC6MixedContent(): void {
+        $expected = (new Node('p'))
+            ->withChild((new Node('#text'))->withText('hi '))
+            ->withChild(new Node('b'))
+            ->withChild((new Node('#text'))->withText(' bye'));
+        NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<p>hi <b/> bye</p>'));
+    }
 }

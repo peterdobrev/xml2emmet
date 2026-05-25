@@ -59,8 +59,23 @@ final class XmlParser {
         // Opening tag end: `<tag ...>`
         $this->expect('>');
 
-        // Closing tag: `</tag>` — no inner content for Task 3.1
-        $this->skipWhitespace();
+        // Child loop: alternate text runs and child elements until `</`
+        $fragments = []; // each entry is either ['text', string] or ['node', Node]
+        while (true) {
+            // End of child content?
+            if ($this->pos + 1 < $this->len
+                && $this->src[$this->pos] === '<'
+                && $this->src[$this->pos + 1] === '/') {
+                break;
+            }
+            if ($this->peek() === '<') {
+                $fragments[] = ['node', $this->parseElement()];
+            } else {
+                $fragments[] = ['text', $this->parseTextRun()];
+            }
+        }
+
+        // Closing tag: `</tag>`
         $this->expect('<');
         $this->expect('/');
         $closeTag = $this->parseName();
@@ -72,7 +87,32 @@ final class XmlParser {
         $this->skipWhitespace();
         $this->expect('>');
 
-        return $this->buildNode($tag, $attrs, []);
+        // Decide tree shape per conventions:
+        // - Only one text fragment and no element children → set $text directly
+        // - Otherwise → all text fragments become Node('#text') children
+        $textCount = 0;
+        $nodeCount = 0;
+        foreach ($fragments as [$type]) {
+            if ($type === 'text') $textCount++;
+            else $nodeCount++;
+        }
+
+        if ($textCount === 1 && $nodeCount === 0) {
+            // Pure text content
+            $node = $this->buildNode($tag, $attrs, []);
+            return $node->withText($fragments[0][1]);
+        }
+
+        // Mixed or element-only: convert text fragments to #text nodes
+        $children = [];
+        foreach ($fragments as [$type, $value]) {
+            if ($type === 'node') {
+                $children[] = $value;
+            } else {
+                $children[] = (new Node('#text'))->withText($value);
+            }
+        }
+        return $this->buildNode($tag, $attrs, $children);
     }
 
     // ── Attribute parsing ─────────────────────────────────────────────────────
@@ -137,6 +177,16 @@ final class XmlParser {
         while ($this->pos < $this->len && ctype_space($this->src[$this->pos])) {
             $this->pos++;
         }
+    }
+
+    /** Scan a text run up to the next `<`, applying entity decoding. */
+    private function parseTextRun(): string {
+        $raw = '';
+        while ($this->pos < $this->len && $this->src[$this->pos] !== '<') {
+            $raw .= $this->src[$this->pos];
+            $this->pos++;
+        }
+        return $this->decodeEntities($raw);
     }
 
     private function peek(): ?string {
