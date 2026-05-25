@@ -17,7 +17,7 @@ POST /api/transform
   "input":     "<ul><li>a</li><li>b</li></ul>",
   "settings":  { "html_mode": true, "show_text": true, "show_attrs": true, "show_attr_values": true },
   "rule_ids":  [],
-  "click_ops": [ { "op": "swap", "path": [0, 0] } ],
+  "click_ops": [ { "type": "swap", "path": [0, 0] } ],
   "save":      false
 }
 ```
@@ -40,43 +40,51 @@ A `path` is a JSON array of zero-based child indices identifying a single node, 
 
 If a `path` does not resolve to a node (out of range, child of a leaf), the server returns `422` with `{error: "bad_path", message: "...", op_index: N}`.
 
-### 1.3 The five operations
+### 1.3 The six operations
 
-| op       | required fields            | effect                                                                                |
+| type     | required fields            | effect                                                                                |
 |----------|----------------------------|---------------------------------------------------------------------------------------|
 | `swap`   | `path`                     | Swap the node at `path` with its **next** sibling. Error if no next sibling exists.   |
+| `rename` | `path`, `with`             | Rename the tag of the node at `path` to `with`. Attrs/children/text preserved.        |
+| `wrap`   | `path`, `with`             | Wrap the node at `path` in a new parent with tag `with`. Wrapper has no attrs.        |
 | `unwrap` | `path`                     | Replace the node at `path` with its children, in order. Root cannot be unwrapped.     |
-| `wrap`   | `path`, `tag`, `attrs?`    | Wrap the node at `path` in a new parent with the given `tag` and optional attributes. |
 | `delete` | `path`                     | Remove the node at `path`. The root cannot be deleted; error if `path == []`.         |
-| `move`   | `path`, `direction`        | `direction` is `"up"` or `"down"`. Move the node among its siblings. (Convenience — equivalent to a chain of `swap`s, but a single op for the UI.) |
+| `move`   | `path`, `to` (`int[]`)     | Move the node at `path` to position `to`. `to` is interpreted **after** the source is removed; the engine handles same-parent index shifting. |
 
 ### 1.4 Examples
 
 **Swap two `<li>` siblings:**
 ```json
-{ "op": "swap", "path": [0, 0] }
+{ "type": "swap", "path": [0, 0] }
 ```
+
+**Rename a tag:**
+```json
+{ "type": "rename", "path": [0], "with": "section" }
+```
+Before: `<body><div>...</div></body>` → after: `<body><section>...</section></body>`
 
 **Unwrap a `<div>` wrapper:**
 ```json
-{ "op": "unwrap", "path": [0] }
+{ "type": "unwrap", "path": [0] }
 ```
 Before: `<body><div><h1/><p/></div></body>` → after: `<body><h1/><p/></body>`
 
 **Wrap an element:**
 ```json
-{ "op": "wrap", "path": [0, 1], "tag": "section", "attrs": { "class": "wrapper" } }
+{ "type": "wrap", "path": [0, 1], "with": "section" }
 ```
 
 **Delete a node:**
 ```json
-{ "op": "delete", "path": [1, 2] }
+{ "type": "delete", "path": [1, 2] }
 ```
 
-**Move down:**
+**Move a node to a new position:**
 ```json
-{ "op": "move", "path": [0], "direction": "down" }
+{ "type": "move", "path": [0], "to": [1, 0] }
 ```
+Move the first child of root into the second child as its first grandchild.
 
 ### 1.5 Ordering and error semantics
 
@@ -87,10 +95,13 @@ Before: `<body><div><h1/><p/></div></body>` → after: `<body><h1/><p/></body>`
 ### 1.6 Validation rules (all server-side)
 
 - `path` must be an array of non-negative integers.
-- `tag` (for `wrap`) must match the `IDENT` regex from the Emmet grammar.
-- `attrs` (for `wrap`) must be a JSON object whose values are strings.
-- `direction` (for `move`) must be `"up"` or `"down"`.
-- Unknown `op` values return `422 {error: "unknown_op"}`.
+- `with` (for `rename` and `wrap`) must match the `IDENT` regex from the Emmet grammar. Missing `with` returns `422 missing_with`.
+- `to` (for `move`) must be an array of non-negative integers. Missing `to` returns `422 missing_to`.
+- Unknown `type` values return `422 unknown_op`.
+- A `path` that does not resolve to a node returns `422 bad_path`.
+- `delete` with `path == []` returns `422 root_delete`. `unwrap` with `path == []` returns `422 unwrap_root`.
+
+All click-op error responses include `details.op_index`.
 
 ---
 
