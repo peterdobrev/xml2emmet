@@ -20,6 +20,10 @@ export function render(container, { api }) {
         <button id="btn-to-emmet" title="Convert to Emmet">→</button>
         <button id="btn-to-xml" title="Convert to XML/HTML">←</button>
         <div class="error-msg" id="convert-error"></div>
+        <div class="rules-select" id="rules-select">
+          <label>Rules</label>
+          <div id="rules-checkboxes" class="rules-checkboxes"></div>
+        </div>
       </div>
 
       <div class="transform-col">
@@ -45,6 +49,29 @@ export function render(container, { api }) {
   `;
 
   let mode = 'html';
+  let rules = [];
+
+  async function loadRules() {
+    const res = await api.rulesList();
+    rules = res.ok ? res.data.items : [];
+    const box = container.querySelector('#rules-checkboxes');
+    box.innerHTML = '';
+    if (rules.length === 0) {
+      box.innerHTML = '<span class="no-rules">No rules saved.</span>';
+      return;
+    }
+    rules.forEach(r => {
+      const lbl = document.createElement('label');
+      lbl.className = 'rule-check-label';
+      lbl.innerHTML = `<input type="checkbox" data-rule-id="${r.id}"> ${escHtml(r.name)}`;
+      box.appendChild(lbl);
+    });
+  }
+
+  function selectedRuleIds() {
+    return [...container.querySelectorAll('#rules-checkboxes input:checked')]
+      .map(el => parseInt(el.dataset.ruleId, 10));
+  }
 
   container.querySelectorAll('#mode-toggle button').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -58,10 +85,12 @@ export function render(container, { api }) {
     const input = container.querySelector('#xml-input').value;
     const showText  = container.querySelector('#show-text').checked;
     const showAttrs = container.querySelector('#show-attrs').checked;
+    const rule_ids  = selectedRuleIds();
     const res = await api.transform({
       direction: 'xml2emmet',
       input,
       settings: { mode, show_text: showText, show_attrs: showAttrs },
+      ...(rule_ids.length ? { rule_ids } : {}),
     });
     if (res.ok) {
       container.querySelector('#emmet-input').value = res.data.output;
@@ -96,4 +125,10 @@ export function render(container, { api }) {
       container.querySelector(sel).textContent = '';
     });
   }
+
+  loadRules();
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
