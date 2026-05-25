@@ -47,7 +47,7 @@ export function render(container, { api }) {
         <div class="transform-tree" id="tree-output"></div>
       </div>
     </div>
-      <div id="transform-stats"></div>
+      <div id="transform-stats"><div class="transform-stats-bar"></div></div>
     </div>
   `;
 
