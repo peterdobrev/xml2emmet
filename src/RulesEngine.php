@@ -14,7 +14,7 @@ final class RulesEngine {
     /** @param Rule[] $rules */
     private static function walk(Node $node, array $rules): Node {
         foreach ($rules as $rule) {
-            if (self::nodesEqual($node, $rule->pattern)) {
+            if (NodeEquality::equals($node, $rule->pattern)) {
                 // Replace this node with the rule's replacement subtree,
                 // tagging every node in the replacement with the rule id.
                 return self::tagSubtree($rule->replacement, $rule->id);
@@ -32,22 +32,6 @@ final class RulesEngine {
         }
 
         return new Node($node->tag, $node->attrs, $newChildren, $node->text, $node->appliedRules);
-    }
-
-    /** Deep equality ignoring appliedRules (mirrors TransformEngine::nodesEqual). */
-    private static function nodesEqual(Node $a, Node $b): bool {
-        if ($a->tag !== $b->tag) return false;
-        if ($a->text !== $b->text) return false;
-        $attrsA = $a->attrs;
-        $attrsB = $b->attrs;
-        ksort($attrsA);
-        ksort($attrsB);
-        if ($attrsA !== $attrsB) return false;
-        if (count($a->children) !== count($b->children)) return false;
-        foreach ($a->children as $i => $childA) {
-            if (!self::nodesEqual($childA, $b->children[$i])) return false;
-        }
-        return true;
     }
 
     /**
