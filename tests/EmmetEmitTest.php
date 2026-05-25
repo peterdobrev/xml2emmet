@@ -42,4 +42,18 @@ final class EmmetEmitTest extends TestCase {
         $n = (new Node('_root'))->withChild(new Node('a'))->withChild(new Node('b'));
         $this->assertSame('a+b', TransformEngine::emmetEmit($n));
     }
+    public function testB10XmlModeQuotesAllAttrs(): void {
+        $n = (new Node('a'))->withAttr('class','y')->withAttr('id','x');
+        $this->assertSame('a[class="y" id="x"]', TransformEngine::emmetEmit($n, 'xml'));
+    }
+    public function testB11XmlModeText(): void {
+        $n = (new Node('p'))->withText('hi');
+        $this->assertSame('p{hi}', TransformEngine::emmetEmit($n, 'xml'));
+    }
+    public function testB12RoundTrip(): void {
+        $abbr = 'div>h1.title{Hello}+ul>li*3';
+        $node = TransformEngine::emmetParse($abbr);
+        $emitted = TransformEngine::emmetEmit($node);
+        $this->assertSame($abbr, $emitted);
+    }
 }

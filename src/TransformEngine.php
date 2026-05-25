@@ -19,28 +19,41 @@ final class TransformEngine {
 
         // Emit tag decorators (id, classes, extra attrs, text)
         $out = $n->tag;
-        $id      = $n->attrs['id']    ?? '';
-        $classes = $n->attrs['class'] ?? '';
-        if ($id !== '') {
-            $out .= '#' . $id;
-        }
-        if ($classes !== '') {
-            foreach (preg_split('/\s+/', trim($classes)) as $cls) {
-                if ($cls !== '') $out .= '.' . $cls;
+        if ($mode === 'xml') {
+            // In xml mode, ALL attributes are emitted as [k="v"] in declaration order.
+            // Never use #id or .class shortcuts.
+            if ($n->attrs !== []) {
+                $pairs = [];
+                foreach ($n->attrs as $k => $v) {
+                    $pairs[] = $k . '="' . $v . '"';
+                }
+                $out .= '[' . implode(' ', $pairs) . ']';
             }
-        }
-        $skip = ['id' => true, 'class' => true];
-        $extras = array_filter(
-            $n->attrs,
-            static fn($k) => !isset($skip[$k]),
-            ARRAY_FILTER_USE_KEY
-        );
-        if ($extras !== []) {
-            $pairs = [];
-            foreach ($extras as $k => $v) {
-                $pairs[] = $k . '="' . $v . '"';
+        } else {
+            // html mode: use #id, .class shortcuts; remaining attrs in [k="v"]
+            $id      = $n->attrs['id']    ?? '';
+            $classes = $n->attrs['class'] ?? '';
+            if ($id !== '') {
+                $out .= '#' . $id;
             }
-            $out .= '[' . implode(' ', $pairs) . ']';
+            if ($classes !== '') {
+                foreach (preg_split('/\s+/', trim($classes)) as $cls) {
+                    if ($cls !== '') $out .= '.' . $cls;
+                }
+            }
+            $skip = ['id' => true, 'class' => true];
+            $extras = array_filter(
+                $n->attrs,
+                static fn($k) => !isset($skip[$k]),
+                ARRAY_FILTER_USE_KEY
+            );
+            if ($extras !== []) {
+                $pairs = [];
+                foreach ($extras as $k => $v) {
+                    $pairs[] = $k . '="' . $v . '"';
+                }
+                $out .= '[' . implode(' ', $pairs) . ']';
+            }
         }
         if ($n->text !== null) {
             $out .= '{' . $n->text . '}';
