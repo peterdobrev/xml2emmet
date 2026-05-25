@@ -54,4 +54,21 @@ final class EmmetParseTest extends TestCase {
         $expected = $div;
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('div>h1+p'));
     }
+    public function testA10Group(): void {
+        $li = fn() => (new Node('li'))->withChild(new Node('a'));
+        $expected = (new Node('ul'))->withChild($li())->withChild($li());
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('ul>(li>a)+(li>a)'));
+    }
+    public function testA11ClimbUp(): void {
+        $expected = (new Node('_root'))
+            ->withChild((new Node('div'))->withChild(new Node('h1')))
+            ->withChild(new Node('p'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('div>h1^p'));
+    }
+    public function testA12DoubleClimb(): void {
+        $expected = (new Node('_root'))
+            ->withChild((new Node('a'))->withChild((new Node('b'))->withChild(new Node('c'))))
+            ->withChild(new Node('d'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a>b>c^^d'));
+    }
 }

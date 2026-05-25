@@ -11,13 +11,21 @@ final class EmmetParser {
     // ── public entry points ──────────────────────────────────────────────────
 
     /**
-     * Top-level parse: handles `+` and `>` operators.
-     * Returns a single Node. When multiple top-level siblings exist
-     * (connected by `+` with no common parent) wraps them in a
-     * synthetic `_root` node per the tree-shape convention.
+     * Top-level parse entry point. Delegates to parseExpr() which runs the
+     * stack-based loop, then wraps multiple top-level siblings in `_root`.
      */
     public function parse(): Node {
-        $siblings = $this->parsePlus();
+        $siblings = $this->parseExpr();
+        return $this->siblingsToNode($siblings);
+    }
+
+    /**
+     * Convert a sibling list to a single Node: one node is returned as-is;
+     * multiple siblings are wrapped in a synthetic `_root` node.
+     *
+     * @param Node[] $siblings
+     */
+    private function siblingsToNode(array $siblings): Node {
         if (count($siblings) === 1) {
             return $siblings[0];
         }
@@ -29,37 +37,103 @@ final class EmmetParser {
     }
 
     /**
-     * Handle `+` (sibling) operator — lowest precedence, left-associative.
-     * Returns an array of sibling Nodes.
+     * Core iterative parser using an explicit depth stack.
+     *
+     * Each stack level is a Node[] of siblings at that depth. A parallel
+     * $parents stack records the Node that owns each level's sibling list
+     * (so we know where to attach children when popping).
+     *
+     * Operators handled:
+     *   `>`  — push a new child level (descend into last element)
+     *   `+`  — add a sibling at the current level
+     *   `^`  — pop one level, attaching collected children (repeatable)
+     *   `(`  — parse a grouped sub-expression (recursive call to parseExpr)
+     *
+     * Stops when end-of-input is reached or a `)` is the next character
+     * (so the same method is reused by parseGroup without modification).
      *
      * @return Node[]
      */
-    private function parsePlus(): array {
-        $list = [$this->parseGt()];
-        while ($this->peek() === '+') {
-            $this->consume(); // consume `+`
-            $list[] = $this->parseGt();
-        }
-        return $list;
-    }
+    private function parseExpr(): array {
+        // stack[i] = sibling list at depth i
+        $stack = [[]];
+        // parents[i] = the Node whose children are being built at stack[i+1];
+        // parents is always one shorter than $stack (no parent for level 0).
+        $parents = [];
 
-    /**
-     * Handle `>` (child) operator — higher precedence than `+`, left-associative.
-     * Returns the resulting Node with any chained children attached.
-     */
-    private function parseGt(): Node {
-        $left = $this->parseElement();
-        while ($this->peek() === '>') {
-            $this->consume(); // consume `>`
-            // Parse the right-hand side as a full `+`-expression so that
-            // `div>h1+p` yields div(h1, p) — `>` distributes over the siblings
-            // that follow it until the next peer-level `+`.
-            $children = $this->parsePlus();
-            foreach ($children as $child) {
-                $left = $left->withChild($child);
+        while (true) {
+            // Parse the next operand: either a `(group)` or a plain element.
+            if ($this->peek() === '(') {
+                $this->consume(); // consume `(`
+                $inner = $this->parseExpr(); // recurse; stops at `)`
+                $this->consume(); // consume `)`
+                // Treat the group as a single operand (wrap if multiple siblings)
+                $node = $this->siblingsToNode($inner);
+            } else {
+                $node = $this->parseElement();
+            }
+
+            // Append this operand to the current sibling level
+            $top = count($stack) - 1;
+            $stack[$top][] = $node;
+
+            $ch = $this->peek();
+
+            if ($ch === '>') {
+                // Descend: open a new child level for $node
+                $this->consume(); // consume `>`
+                $parents[] = $node;
+                $stack[] = []; // push empty sibling list for children
+            } elseif ($ch === '+') {
+                // Sibling: stay at the same level, just loop
+                $this->consume(); // consume `+`
+            } elseif ($ch === '^') {
+                // Climb-up: pop one level per `^`, attaching children upward
+                while ($this->peek() === '^') {
+                    $this->consume(); // consume one `^`
+                    if (count($stack) <= 1) {
+                        // Already at root level — cannot climb further
+                        break;
+                    }
+                    // Attach the current child list to the parent node
+                    $children = array_pop($stack);
+                    $parentNode = array_pop($parents);
+                    foreach ($children as $child) {
+                        $parentNode = $parentNode->withChild($child);
+                    }
+                    // Replace the last element of the now-current level with
+                    // the updated parent (the one that now has its children).
+                    $top = count($stack) - 1;
+                    $stack[$top][count($stack[$top]) - 1] = $parentNode;
+                }
+                // After climbing, if next char is `+` consume it and continue;
+                // otherwise let the next iteration's operand parse handle it.
+                if ($this->peek() === '+') {
+                    $this->consume(); // consume `+` that follows `^`
+                }
+                // If the next char is something that starts an operand, loop.
+                // If it's `)` or end-of-input the outer while condition handles it.
+                if ($this->peek() === '' || $this->peek() === ')') {
+                    break;
+                }
+            } else {
+                // End of input or `)` — stop the loop
+                break;
             }
         }
-        return $left;
+
+        // Unwind any remaining open levels (e.g. a plain `div>span` with no `^`)
+        while (count($stack) > 1) {
+            $children = array_pop($stack);
+            $parentNode = array_pop($parents);
+            foreach ($children as $child) {
+                $parentNode = $parentNode->withChild($child);
+            }
+            $top = count($stack) - 1;
+            $stack[$top][count($stack[$top]) - 1] = $parentNode;
+        }
+
+        return $stack[0];
     }
 
     public function parseElement(): Node {
