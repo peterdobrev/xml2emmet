@@ -2,12 +2,9 @@
 namespace App;
 
 /**
- * Minimal XML scanner: parses a single XML element (self-closing or open/close pair)
- * with optional attributes into a Node tree.
- *
- * Scope (Task 3.1): self-closing tags, open/close pairs with no content, attributes
- * with quoted values, entity decoding for the five standard XML entities.
- * Children are deferred to Task 3.2.
+ * Minimal XML scanner: parses an XML element (self-closing or open/close pair) with
+ * optional attributes, children, and text into a Node tree. Decodes the five standard
+ * XML entities (&amp; &lt; &gt; &quot; &apos;) in attribute values and text content.
  */
 final class XmlParser {
     private int $pos = 0;
