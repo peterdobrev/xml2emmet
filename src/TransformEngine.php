@@ -11,15 +11,51 @@ final class TransformEngine {
     }
 
     public static function xmlEmit(Node $n, string $mode = 'xml'): string {
+        return self::xmlEmitNode($n, $mode);
+    }
+
+    private static function xmlEmitNode(Node $n, string $mode): string {
+        // #text synthetic node: emit escaped text only — no element tags.
+        if ($n->tag === '#text') {
+            return htmlspecialchars($n->text ?? '', ENT_XML1 | ENT_NOQUOTES, 'UTF-8');
+        }
+
         $attrs = self::emitAttrs($n->attrs);
         $open  = '<' . $n->tag . $attrs;
-        if ($n->text === null && $n->children === []) {
-            return $open . '/>';
+
+        // HTML void elements: no closing slash, no closing tag (e.g. <br>).
+        if ($mode === 'html' && self::isHtmlVoidElement($n->tag)) {
+            return $open . '>';
         }
-        $body = $n->text !== null
-            ? htmlspecialchars($n->text, ENT_XML1 | ENT_NOQUOTES, 'UTF-8')
-            : '';
-        return $open . '>' . $body . '</' . $n->tag . '>';
+
+        // Emit body: recursive children take priority over inline $text.
+        if ($n->children !== []) {
+            $body = '';
+            foreach ($n->children as $child) {
+                $body .= self::xmlEmitNode($child, $mode);
+            }
+            return $open . '>' . $body . '</' . $n->tag . '>';
+        }
+
+        // Pure text content.
+        if ($n->text !== null) {
+            $body = htmlspecialchars($n->text, ENT_XML1 | ENT_NOQUOTES, 'UTF-8');
+            return $open . '>' . $body . '</' . $n->tag . '>';
+        }
+
+        // Empty element: xml uses self-closing shorthand; html uses open+close pair.
+        if ($mode === 'html') {
+            return $open . '></' . $n->tag . '>';
+        }
+        return $open . '/>';
+    }
+
+    private static function isHtmlVoidElement(string $tag): bool {
+        static $voids = [
+            'area', 'base', 'br', 'col', 'embed', 'hr', 'img',
+            'input', 'link', 'meta', 'source', 'track', 'wbr',
+        ];
+        return in_array(strtolower($tag), $voids, true);
     }
 
     /** @param array<string,string> $attrs */

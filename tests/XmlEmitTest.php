@@ -15,4 +15,19 @@ final class XmlEmitTest extends TestCase {
         $n = (new Node('a'))->withAttr('href','/x')->withAttr('id','y');
         $this->assertSame('<a href="/x" id="y"/>', TransformEngine::xmlEmit($n));
     }
+    public function testD4Children(): void {
+        $n = (new Node('div'))->withChild(new Node('h1'))->withChild(new Node('p'));
+        $this->assertSame('<div><h1/><p/></div>', TransformEngine::xmlEmit($n));
+    }
+    public function testD5MixedContent(): void {
+        $n = (new Node('p'))
+            ->withChild((new Node('#text'))->withText('hi '))
+            ->withChild(new Node('b'))
+            ->withChild((new Node('#text'))->withText(' bye'));
+        $this->assertSame('<p>hi <b/> bye</p>', TransformEngine::xmlEmit($n));
+    }
+    public function testD6HtmlVoidElement(): void {
+        $n = (new Node('div'))->withChild(new Node('br'));
+        $this->assertSame('<div><br></div>', TransformEngine::xmlEmit($n, 'html'));
+    }
 }
