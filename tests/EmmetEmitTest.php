@@ -19,4 +19,18 @@ final class EmmetEmitTest extends TestCase {
         $n = (new Node('span'))->withText('hi');
         $this->assertSame('span{hi}', TransformEngine::emmetEmit($n));
     }
+    public function testB5Child(): void {
+        $n = (new Node('div'))->withChild(new Node('span'));
+        $this->assertSame('div>span', TransformEngine::emmetEmit($n));
+    }
+    public function testB6Siblings(): void {
+        $n = (new Node('_root'))->withChild(new Node('h1'))->withChild(new Node('p'));
+        $this->assertSame('h1+p', TransformEngine::emmetEmit($n));
+    }
+    public function testB7ChildThenSiblings(): void {
+        $n = (new Node('div'))
+            ->withChild((new Node('h1'))->withText('Hi'))
+            ->withChild(new Node('p'));
+        $this->assertSame('div>h1{Hi}+p', TransformEngine::emmetEmit($n));
+    }
 }
