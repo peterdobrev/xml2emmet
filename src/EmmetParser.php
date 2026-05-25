@@ -388,7 +388,7 @@ final class EmmetParser {
                 "Unclosed `[` in attribute list at position {$this->pos}"
             );
         }
-        $this->consumeIf(']'); // consume closing `]`
+        $this->consume(); // consume closing `]`
         return $attrs;
     }
 

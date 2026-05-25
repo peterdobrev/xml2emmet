@@ -98,10 +98,12 @@ final class EmmetParseTest extends TestCase {
     }
     public function testA17UnclosedBrace(): void {
         $this->expectException(\App\EmmetParseError::class);
+        $this->expectExceptionMessageMatches('/unclosed/i');
         TransformEngine::emmetParse('span{hello');
     }
     public function testA18UnclosedGroup(): void {
         $this->expectException(\App\EmmetParseError::class);
+        $this->expectExceptionMessageMatches('/unclosed/i');
         TransformEngine::emmetParse('(a>b');
     }
     public function testA19EmptyTag(): void {
