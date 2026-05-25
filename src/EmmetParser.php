@@ -10,6 +10,58 @@ final class EmmetParser {
 
     // ── public entry points ──────────────────────────────────────────────────
 
+    /**
+     * Top-level parse: handles `+` and `>` operators.
+     * Returns a single Node. When multiple top-level siblings exist
+     * (connected by `+` with no common parent) wraps them in a
+     * synthetic `_root` node per the tree-shape convention.
+     */
+    public function parse(): Node {
+        $siblings = $this->parsePlus();
+        if (count($siblings) === 1) {
+            return $siblings[0];
+        }
+        $root = new Node('_root');
+        foreach ($siblings as $sibling) {
+            $root = $root->withChild($sibling);
+        }
+        return $root;
+    }
+
+    /**
+     * Handle `+` (sibling) operator — lowest precedence, left-associative.
+     * Returns an array of sibling Nodes.
+     *
+     * @return Node[]
+     */
+    private function parsePlus(): array {
+        $list = [$this->parseGt()];
+        while ($this->peek() === '+') {
+            $this->consume(); // consume `+`
+            $list[] = $this->parseGt();
+        }
+        return $list;
+    }
+
+    /**
+     * Handle `>` (child) operator — higher precedence than `+`, left-associative.
+     * Returns the resulting Node with any chained children attached.
+     */
+    private function parseGt(): Node {
+        $left = $this->parseElement();
+        while ($this->peek() === '>') {
+            $this->consume(); // consume `>`
+            // Parse the right-hand side as a full `+`-expression so that
+            // `div>h1+p` yields div(h1, p) — `>` distributes over the siblings
+            // that follow it until the next peer-level `+`.
+            $children = $this->parsePlus();
+            foreach ($children as $child) {
+                $left = $left->withChild($child);
+            }
+        }
+        return $left;
+    }
+
     public function parseElement(): Node {
         $tag = $this->consumeIdent();
         if ($tag === '') {

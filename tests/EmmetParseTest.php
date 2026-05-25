@@ -41,4 +41,17 @@ final class EmmetParseTest extends TestCase {
         $expected = (new Node('a'))->withAttr('title', 'say "hi"');
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a[title="say \"hi\""]'));
     }
+    public function testA7Child(): void {
+        $expected = (new Node('div'))->withChild(new Node('span'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('div>span'));
+    }
+    public function testA8Sibling(): void {
+        $expected = (new Node('_root'))->withChild(new Node('h1'))->withChild(new Node('p'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('h1+p'));
+    }
+    public function testA9NestedChildSibling(): void {
+        $div = (new Node('div'))->withChild(new Node('h1'))->withChild(new Node('p'));
+        $expected = $div;
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('div>h1+p'));
+    }
 }
