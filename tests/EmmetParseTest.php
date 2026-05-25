@@ -71,4 +71,8 @@ final class EmmetParseTest extends TestCase {
             ->withChild(new Node('d'));
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a>b>c^^d'));
     }
+    public function testA12bExcessClimbCappedAtRoot(): void {
+        $expected = (new Node('_root'))->withChild(new Node('a'))->withChild(new Node('b'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a^^^^b'));
+    }
 }

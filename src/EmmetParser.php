@@ -92,8 +92,8 @@ final class EmmetParser {
                 while ($this->peek() === '^') {
                     $this->consume(); // consume one `^`
                     if (count($stack) <= 1) {
-                        // Already at root level — cannot climb further
-                        break;
+                        // Already at root level — consume the `^` but cap the climb
+                        continue;
                     }
                     // Attach the current child list to the parent node
                     $children = array_pop($stack);
