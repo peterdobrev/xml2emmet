@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#0f172a"/>
+    </marker>
+  </defs>
+
+  <text x="550" y="30" text-anchor="middle" font-size="18" font-weight="700" fill="#0f172a">User flow — "Transform XML → Emmet, then save"</text>
+
+  <!-- Actor -->
+  <circle cx="70" cy="100" r="22" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>
+  <text x="70" y="105" text-anchor="middle" font-size="11">user</text>
+  <text x="70" y="148" text-anchor="middle" font-size="11" fill="#475569">logged in</text>
+
+  <!-- Step 1 -->
+  <rect x="120" y="70" width="200" height="80" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="220" y="92" text-anchor="middle" font-weight="600">1 · Browser — Transform tab</text>
+  <text x="220" y="112" text-anchor="middle" font-size="11" fill="#0f172a">paste XML, pick toggles,</text>
+  <text x="220" y="128" text-anchor="middle" font-size="11" fill="#0f172a">choose rules to apply,</text>
+  <text x="220" y="144" text-anchor="middle" font-size="11" fill="#0f172a">click Transform</text>
+
+  <line x1="92" y1="105" x2="118" y2="105" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Step 1 → 2 (long arrow with two-line label) -->
+  <line x1="320" y1="110" x2="610" y2="110" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+  <text x="465" y="100" text-anchor="middle" font-size="11" fill="#475569">POST /api/transform</text>
+  <text x="465" y="124" text-anchor="middle" font-size="11" fill="#475569">{direction, input, settings, rule_ids, save:true}</text>
+
+  <!-- Step 2 -->
+  <rect x="610" y="70" width="220" height="80" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="720" y="92" text-anchor="middle" font-weight="600">2 · PHP Router</text>
+  <text x="720" y="112" text-anchor="middle" font-size="11" fill="#0f172a">verify session cookie</text>
+  <text x="720" y="128" text-anchor="middle" font-size="11" fill="#0f172a">validate body</text>
+  <text x="720" y="144" text-anchor="middle" font-size="11" fill="#0f172a">dispatch to TransformEngine</text>
+
+  <!-- Step 2 → 3 -->
+  <line x1="830" y1="110" x2="890" y2="110" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Step 3 -->
+  <rect x="890" y="70" width="200" height="80" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="990" y="92" text-anchor="middle" font-weight="600">3 · TransformEngine</text>
+  <text x="990" y="112" text-anchor="middle" font-size="11" fill="#0f172a">xmlParse → Tree</text>
+  <text x="990" y="128" text-anchor="middle" font-size="11" fill="#0f172a">applyRules → Tree'</text>
+  <text x="990" y="144" text-anchor="middle" font-size="11" fill="#0f172a">emmetEmit(opts) → string</text>
+
+  <!-- Step 3 → 4 down -->
+  <line x1="990" y1="150" x2="990" y2="220" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Step 4 -->
+  <rect x="870" y="220" width="240" height="80" rx="10" fill="#dcfce7" stroke="#15803d" stroke-width="1.5"/>
+  <text x="990" y="242" text-anchor="middle" font-weight="600">4 · History service</text>
+  <text x="990" y="262" text-anchor="middle" font-size="11" fill="#0f172a">save:true → INSERT row</text>
+  <text x="990" y="278" text-anchor="middle" font-size="11" fill="#0f172a">input_text, output_text, settings JSON,</text>
+  <text x="990" y="294" text-anchor="middle" font-size="11" fill="#0f172a">user_id, direction, created_at</text>
+
+  <line x1="990" y1="300" x2="990" y2="370" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <!-- Step 5 -->
+  <rect x="890" y="370" width="200" height="60" rx="10" fill="#fee2e2" stroke="#b91c1c" stroke-width="1.5"/>
+  <text x="990" y="392" text-anchor="middle" font-weight="600">5 · MySQL</text>
+  <text x="990" y="412" text-anchor="middle" font-size="11" fill="#0f172a">transformations row persisted</text>
+
+  <!-- Return path: 5 → router -->
+  <line x1="890" y1="400" x2="830" y2="400" stroke="#0f172a" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#a2)"/>
+  <text x="860" y="395" text-anchor="middle" font-size="11" fill="#475569">history_id</text>
+
+  <rect x="610" y="370" width="220" height="60" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="720" y="392" text-anchor="middle" font-weight="600">PHP Router · response</text>
+  <text x="720" y="412" text-anchor="middle" font-size="11" fill="#0f172a">{ output, history_id }</text>
+
+  <!-- Router → browser -->
+  <line x1="610" y1="400" x2="320" y2="400" stroke="#0f172a" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#a2)"/>
+
+  <rect x="120" y="370" width="200" height="60" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="220" y="392" text-anchor="middle" font-weight="600">Browser renders output</text>
+  <text x="220" y="412" text-anchor="middle" font-size="11" fill="#0f172a">writes Emmet into output pane</text>
+
+  <line x1="120" y1="400" x2="92" y2="400" stroke="#0f172a" stroke-width="1.5" stroke-dasharray="5,4" marker-end="url(#a2)"/>
+
+  <circle cx="70" cy="400" r="22" fill="#fde68a" stroke="#b45309" stroke-width="1.5"/>
+  <text x="70" y="405" text-anchor="middle" font-size="11">user</text>
+  <text x="70" y="445" text-anchor="middle" font-size="11" fill="#475569">sees Emmet</text>
+
+  <!-- Later: restore -->
+  <text x="550" y="500" text-anchor="middle" font-size="16" font-weight="700" fill="#0f172a">…later: "Restore settings only"</text>
+
+  <rect x="60" y="530" width="280" height="70" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="200" y="552" text-anchor="middle" font-weight="600">History tab</text>
+  <text x="200" y="572" text-anchor="middle" font-size="11" fill="#0f172a">click [Restore settings] on row</text>
+  <text x="200" y="588" text-anchor="middle" font-size="11" fill="#475569">POST /api/history/123/restore  {mode:"settings"}</text>
+
+  <line x1="340" y1="565" x2="450" y2="565" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <rect x="450" y="530" width="280" height="70" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="1.5"/>
+  <text x="590" y="552" text-anchor="middle" font-weight="600">PHP returns settings only</text>
+  <text x="590" y="572" text-anchor="middle" font-size="11" fill="#0f172a">SELECT settings FROM transformations</text>
+  <text x="590" y="588" text-anchor="middle" font-size="11" fill="#0f172a">→ { settings: {...} }</text>
+
+  <line x1="730" y1="565" x2="840" y2="565" stroke="#0f172a" stroke-width="1.5" marker-end="url(#a2)"/>
+
+  <rect x="840" y="530" width="240" height="70" rx="10" fill="#dbeafe" stroke="#1d4ed8" stroke-width="1.5"/>
+  <text x="960" y="552" text-anchor="middle" font-weight="600">Browser merges</text>
+  <text x="960" y="572" text-anchor="middle" font-size="11" fill="#0f172a">switches to Transform tab</text>
+  <text x="960" y="588" text-anchor="middle" font-size="11" fill="#0f172a">populates toggles · leaves input as-is</text>
+
+  <text x="550" y="660" text-anchor="middle" font-size="11" fill="#475569">"Restore data" returns input only · "Restore both" returns both fields · same endpoint, different mode</text>
+</svg>
