@@ -6,20 +6,26 @@ final class RulesEngine {
     private const PLACEHOLDER_RE = '/^E\d+$/';
 
     /**
-     * Apply an array of rules to a tree, returning a new tree.
+     * Apply an array of rules to a tree in order, returning a new tree.
+     * Each rule is applied as a complete tree pass before the next rule runs
+     * (left-fold / sequential passes), so r1: a→b followed by r2: b→c
+     * against tree <a> yields <c>.
      *
      * @param Rule[] $rules
      */
     public static function apply(Node $root, array $rules): Node {
-        return self::walk($root, $rules);
+        foreach ($rules as $rule) {
+            $root = self::walk($root, [$rule]);
+        }
+        return $root;
     }
 
     /**
      * Pre-order, top-down traversal.  On match, recursion stops at the matched
      * node (the replacement subtree is not re-walked for the same rule due to
      * the appliedRules guard, and is also returned as-is rather than re-walked
-     * for other rules).  Multi-rule sequencing is Task 5.3's concern; this
-     * method keeps the current single-pass behaviour.
+     * for other rules).  Called with a single-element array from apply() so
+     * that multi-rule sequencing is handled at the apply() level.
      *
      * @param Rule[] $rules
      */
@@ -80,13 +86,14 @@ final class RulesEngine {
 
         // Structural match: tag, text, attrs, child count, children.
         if ($pattern->tag !== $candidate->tag) return null;
-        if ($pattern->text !== $candidate->text) return null;
 
-        $pa = $pattern->attrs;
-        $ca = $candidate->attrs;
-        ksort($pa);
-        ksort($ca);
-        if ($pa !== $ca) return null;
+        // Text: null on pattern means "don't care"; non-null must match exactly.
+        if ($pattern->text !== null && $pattern->text !== $candidate->text) return null;
+
+        // Attrs: pattern attrs are a required subset — candidate may have extras.
+        foreach ($pattern->attrs as $k => $v) {
+            if (!array_key_exists($k, $candidate->attrs) || $candidate->attrs[$k] !== $v) return null;
+        }
 
         if (count($pattern->children) !== count($candidate->children)) return null;
 

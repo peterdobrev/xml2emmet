@@ -40,4 +40,24 @@ final class ApplyRulesTest extends TestCase {
         $expected = (new Node('x'))->withChild(new Node('x'));
         NodeAssert::assertEquals($expected, TransformEngine::applyRules($tree, [new Rule('r', $pattern, $replacement)]));
     }
+    public function testE6RulesAppliedInOrder(): void {
+        $r1 = new Rule('r1', new Node('a'), new Node('b'));
+        $r2 = new Rule('r2', new Node('b'), new Node('c'));
+        $tree = new Node('a');
+        $expected = new Node('c');
+        NodeAssert::assertEquals($expected, TransformEngine::applyRules($tree, [$r1, $r2]));
+    }
+    public function testE7AttributeLiteralMustMatch(): void {
+        $pattern = (new Node('a'))->withAttr('rel','nofollow');
+        $tree = (new Node('a'))->withAttr('rel','external');
+        $rule = new Rule('r', $pattern, new Node('em'));
+        NodeAssert::assertEquals($tree, TransformEngine::applyRules($tree, [$rule]));
+    }
+    public function testE8AttributesAndTextCarryThroughPlaceholders(): void {
+        $pattern = (new Node('wrap'))->withChild(new Node('E1'));
+        $replacement = (new Node('out'))->withChild(new Node('E1'));
+        $tree = (new Node('wrap'))->withChild((new Node('a'))->withAttr('href','/x')->withText('link'));
+        $expected = (new Node('out'))->withChild((new Node('a'))->withAttr('href','/x')->withText('link'));
+        NodeAssert::assertEquals($expected, TransformEngine::applyRules($tree, [new Rule('r', $pattern, $replacement)]));
+    }
 }
