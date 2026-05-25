@@ -1,5 +1,6 @@
 <?php
 namespace App;
+use App\EmmetParseError;
 final class EmmetParser {
     private int $pos = 0;
     private int $len;
@@ -64,8 +65,14 @@ final class EmmetParser {
         while (true) {
             // Parse the next operand: either a `(group)` or a plain element.
             if ($this->peek() === '(') {
+                $openPos = $this->pos;
                 $this->consume(); // consume `(`
                 $inner = $this->parseExpr(); // recurse; stops at `)`
+                if ($this->peek() !== ')') {
+                    throw new EmmetParseError(
+                        "Unclosed `(` group at position {$openPos}"
+                    );
+                }
                 $this->consume(); // consume `)`
                 // Treat the group as a single operand (wrap if multiple siblings)
                 $node = $this->siblingsToNode($inner);
@@ -163,13 +170,13 @@ final class EmmetParser {
         }
         $digits = substr($this->input, $numStart, $this->pos - $numStart);
         if ($digits === '') {
-            throw new \InvalidArgumentException(
+            throw new EmmetParseError(
                 "Expected integer after `*` at position {$numStart}"
             );
         }
         $n = (int) $digits;
         if ($n <= 0) {
-            throw new \InvalidArgumentException(
+            throw new EmmetParseError(
                 "`*N` requires N >= 1, got {$n} at position {$numStart}"
             );
         }
@@ -215,7 +222,7 @@ final class EmmetParser {
     public function parseElement(): Node {
         $tag = $this->consumeIdent();
         if ($tag === '') {
-            throw new \InvalidArgumentException(
+            throw new EmmetParseError(
                 "Expected tag name at position {$this->pos}"
             );
         }
@@ -376,6 +383,11 @@ final class EmmetParser {
             }
             $attrs[$key] = $value;
         }
+        if ($this->peek() !== ']') {
+            throw new EmmetParseError(
+                "Unclosed `[` in attribute list at position {$this->pos}"
+            );
+        }
         $this->consumeIf(']'); // consume closing `]`
         return $attrs;
     }
@@ -387,12 +399,13 @@ final class EmmetParser {
      * Braces do not nest.
      */
     private function parseTextLiteral(): string {
+        $openPos = $this->pos - 1; // position of the `{` (already consumed by caller)
         $buf = '';
         while ($this->pos < $this->len) {
             $ch = $this->peek();
             if ($ch === '}') {
                 $this->pos++; // consume closing `}`
-                break;
+                return $buf;
             }
             if ($ch === '\\') {
                 $this->pos++; // consume backslash
@@ -409,6 +422,8 @@ final class EmmetParser {
             $buf .= $ch;
             $this->pos++;
         }
-        return $buf;
+        throw new EmmetParseError(
+            "Unclosed `{` in text literal at position {$openPos}"
+        );
     }
 }

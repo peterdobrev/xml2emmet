@@ -91,4 +91,25 @@ final class EmmetParseTest extends TestCase {
         $expected = (new Node('table'))->withChild($row())->withChild($row());
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('table>(tr>td*2)*2'));
     }
+    public function testA16UnclosedBracket(): void {
+        $this->expectException(\App\EmmetParseError::class);
+        $this->expectExceptionMessageMatches('/unclosed/i');
+        TransformEngine::emmetParse('a[href=/x');
+    }
+    public function testA17UnclosedBrace(): void {
+        $this->expectException(\App\EmmetParseError::class);
+        TransformEngine::emmetParse('span{hello');
+    }
+    public function testA18UnclosedGroup(): void {
+        $this->expectException(\App\EmmetParseError::class);
+        TransformEngine::emmetParse('(a>b');
+    }
+    public function testA19EmptyTag(): void {
+        $this->expectException(\App\EmmetParseError::class);
+        TransformEngine::emmetParse('>p');
+    }
+    public function testA20BadRepetition(): void {
+        $this->expectException(\App\EmmetParseError::class);
+        TransformEngine::emmetParse('li*0');
+    }
 }
