@@ -73,16 +73,26 @@ final class EmmetParser {
                 $node = $this->parseElement();
             }
 
-            // Append this operand to the current sibling level
+            // After an element or group, check for `*N` repetition modifier.
+            // `*N` binds tighter than `+`/`>`/`^` but produces siblings at the
+            // current level — the N clones are all pushed onto $stack[$top].
+            $nodes = [$node];
+            if ($this->peek() === '*') {
+                $nodes = $this->expandRepetition($node);
+            }
+
+            // Append operand(s) to the current sibling level
             $top = count($stack) - 1;
-            $stack[$top][] = $node;
+            foreach ($nodes as $n) {
+                $stack[$top][] = $n;
+            }
 
             $ch = $this->peek();
 
             if ($ch === '>') {
-                // Descend: open a new child level for $node
+                // Descend: open a new child level for the last node pushed
                 $this->consume(); // consume `>`
-                $parents[] = $node;
+                $parents[] = $stack[$top][count($stack[$top]) - 1];
                 $stack[] = []; // push empty sibling list for children
             } elseif ($ch === '+') {
                 // Sibling: stay at the same level, just loop
@@ -134,6 +144,72 @@ final class EmmetParser {
         }
 
         return $stack[0];
+    }
+
+    /**
+     * Consume `*N` and return N clones of $operand with `$` replaced by index.
+     *
+     * When $operand is a `_root` synthetic (produced by a multi-sibling group),
+     * each iteration contributes the children list as a flat sequence of siblings
+     * rather than a wrapped `_root` — preserving the sibling semantics of the group.
+     *
+     * @return Node[]
+     */
+    private function expandRepetition(Node $operand): array {
+        $this->consume(); // consume `*`
+        $numStart = $this->pos;
+        while ($this->pos < $this->len && ctype_digit($this->input[$this->pos])) {
+            $this->pos++;
+        }
+        $digits = substr($this->input, $numStart, $this->pos - $numStart);
+        if ($digits === '') {
+            throw new \InvalidArgumentException(
+                "Expected integer after `*` at position {$numStart}"
+            );
+        }
+        $n = (int) $digits;
+        if ($n <= 0) {
+            throw new \InvalidArgumentException(
+                "`*N` requires N >= 1, got {$n} at position {$numStart}"
+            );
+        }
+
+        // A `_root` operand from a multi-sibling group is expanded flat so that
+        // each repetition contributes its children as siblings, not as a wrapped node.
+        $isMultiGroup = $operand->tag === '_root' && $operand->children !== [];
+
+        $result = [];
+        for ($i = 1; $i <= $n; $i++) {
+            if ($isMultiGroup) {
+                foreach ($operand->children as $child) {
+                    $result[] = $this->cloneWithIndex($child, $i);
+                }
+            } else {
+                $result[] = $this->cloneWithIndex($operand, $i);
+            }
+        }
+        return $result;
+    }
+
+    /**
+     * Deep-clone $node substituting every `$` in text and attribute values with $index.
+     */
+    private function cloneWithIndex(Node $node, int $index): Node {
+        $replace = fn(string $s): string => str_replace('$', (string) $index, $s);
+
+        $newAttrs = [];
+        foreach ($node->attrs as $k => $v) {
+            $newAttrs[$k] = $replace($v);
+        }
+
+        $newChildren = [];
+        foreach ($node->children as $child) {
+            $newChildren[] = $this->cloneWithIndex($child, $index);
+        }
+
+        $newText = $node->text !== null ? $replace($node->text) : null;
+
+        return new Node($node->tag, $newAttrs, $newChildren, $newText, $node->appliedRules);
     }
 
     public function parseElement(): Node {

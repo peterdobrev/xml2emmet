@@ -75,4 +75,20 @@ final class EmmetParseTest extends TestCase {
         $expected = (new Node('_root'))->withChild(new Node('a'))->withChild(new Node('b'));
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a^^^^b'));
     }
+    public function testA13Repetition(): void {
+        $li = new Node('li');
+        $expected = (new Node('_root'))->withChild($li)->withChild($li)->withChild($li);
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('li*3'));
+    }
+    public function testA14RepetitionWithPlaceholder(): void {
+        $expected = (new Node('_root'))
+            ->withChild((new Node('li'))->withText('item 1'))
+            ->withChild((new Node('li'))->withText('item 2'));
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('li{item $}*2'));
+    }
+    public function testA15GroupRepetition(): void {
+        $row = fn() => (new Node('tr'))->withChild(new Node('td'))->withChild(new Node('td'));
+        $expected = (new Node('table'))->withChild($row())->withChild($row());
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('table>(tr>td*2)*2'));
+    }
 }
