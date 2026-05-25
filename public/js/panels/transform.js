@@ -3,7 +3,8 @@ import { render as renderTree } from '../components/tree.js';
 export function render(container, { api }) {
   container.innerHTML = `
     <h2>Transform</h2>
-    <div class="transform-grid">
+    <div class="transform-panel">
+      <div class="transform-grid">
       <div class="transform-col">
         <div class="transform-col-header">
           <label>XML / HTML</label>
@@ -46,7 +47,8 @@ export function render(container, { api }) {
         <div class="transform-tree" id="tree-output"></div>
       </div>
     </div>
-    <div id="transform-stats"></div>
+      <div id="transform-stats"></div>
+    </div>
   `;
 
   let mode = 'html';

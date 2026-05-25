@@ -223,12 +223,18 @@ h2 {
 }
 
 /* Transform panel */
+.transform-panel {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
+}
+
 .transform-grid {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
   gap: 0;
-  height: calc(100vh - 120px);
-  min-height: 400px;
+  flex: 1;
+  min-height: 0;
 }
 
 .transform-col {
@@ -322,9 +328,9 @@ h2 {
   flex-wrap: wrap;
   padding: 10px 0;
   border-top: 1px solid var(--border-dim);
-  margin-top: 8px;
   font-size: 12px;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 
 .transform-stats-bar .stats-key {
