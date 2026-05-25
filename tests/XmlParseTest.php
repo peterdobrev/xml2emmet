@@ -32,4 +32,16 @@ final class XmlParseTest extends TestCase {
             ->withChild((new Node('#text'))->withText(' bye'));
         NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<p>hi <b/> bye</p>'));
     }
+    public function testC7HtmlVoidElements(): void {
+        $expected = (new Node('div'))->withChild(new Node('br'))->withChild(new Node('img'));
+        NodeAssert::assertEquals($expected, TransformEngine::xmlParse('<div><br><img></div>', 'html'));
+    }
+    public function testC8UnclosedTag(): void {
+        $this->expectException(\App\XmlParseError::class);
+        TransformEngine::xmlParse('<div><p></div>');
+    }
+    public function testC9MismatchedTags(): void {
+        $this->expectException(\App\XmlParseError::class);
+        TransformEngine::xmlParse('<a></b>');
+    }
 }

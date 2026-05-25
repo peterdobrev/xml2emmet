@@ -2,15 +2,27 @@
 namespace App;
 
 /**
- * Minimal XML scanner: parses an XML element (self-closing or open/close pair) with
+ * Minimal XML/HTML scanner: parses an XML element (self-closing or open/close pair) with
  * optional attributes, children, and text into a Node tree. Decodes the five standard
  * XML entities (&amp; &lt; &gt; &quot; &apos;) in attribute values and text content.
+ *
+ * When $mode is 'html', the void-element list (area, base, br, col, embed, hr, img,
+ * input, link, meta, source, track, wbr) is treated as self-closing even without a '/'.
  */
 final class XmlParser {
     private int $pos = 0;
     private int $len;
 
-    public function __construct(private readonly string $src) {
+    /** HTML void elements (lowercase). */
+    private const VOID_ELEMENTS = [
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img',
+        'input', 'link', 'meta', 'source', 'track', 'wbr',
+    ];
+
+    public function __construct(
+        private readonly string $src,
+        private readonly string $mode = 'xml',
+    ) {
         $this->len = strlen($src);
     }
 
@@ -21,7 +33,7 @@ final class XmlParser {
         $node = $this->parseElement();
         $this->skipWhitespace();
         if ($this->pos !== $this->len) {
-            throw new \RuntimeException(
+            throw new XmlParseError(
                 "Unexpected trailing content at position {$this->pos}"
             );
         }
@@ -31,6 +43,7 @@ final class XmlParser {
     // ── Element parsing ───────────────────────────────────────────────────────
 
     private function parseElement(): Node {
+        $openPos = $this->pos;
         $this->expect('<');
 
         $tag = $this->parseName();
@@ -56,9 +69,20 @@ final class XmlParser {
         // Opening tag end: `<tag ...>`
         $this->expect('>');
 
+        // HTML mode: void elements are implicitly self-closing — no children, no close tag.
+        if ($this->isVoidElement($tag)) {
+            return $this->buildNode($tag, $attrs, []);
+        }
+
         // Child loop: alternate text runs and child elements until `</`
         $fragments = []; // each entry is either ['text', string] or ['node', Node]
         while (true) {
+            // EOF before closing tag
+            if ($this->pos >= $this->len) {
+                throw new XmlParseError(
+                    "Unclosed tag <$tag> opened at position $openPos: reached end of input"
+                );
+            }
             // End of child content?
             if ($this->pos + 1 < $this->len
                 && $this->src[$this->pos] === '<'
@@ -77,8 +101,8 @@ final class XmlParser {
         $this->expect('/');
         $closeTag = $this->parseName();
         if ($closeTag !== $tag) {
-            throw new \RuntimeException(
-                "Mismatched tags: opened <$tag> closed </$closeTag>"
+            throw new XmlParseError(
+                "Mismatched tags at position {$this->pos}: opened <$tag> at $openPos, closed </$closeTag>"
             );
         }
         $this->skipWhitespace();
@@ -127,7 +151,7 @@ final class XmlParser {
     private function parseAttributeValue(): string {
         $quote = $this->current();
         if ($quote !== '"' && $quote !== "'") {
-            throw new \RuntimeException(
+            throw new XmlParseError(
                 "Expected quoted attribute value at position {$this->pos}, got '{$quote}'"
             );
         }
@@ -149,12 +173,12 @@ final class XmlParser {
      */
     private function parseName(): string {
         if ($this->pos >= $this->len) {
-            throw new \RuntimeException("Expected XML name but reached end of input");
+            throw new XmlParseError("Expected XML name but reached end of input");
         }
         $start = $this->pos;
         $first = $this->current();
         if (!ctype_alpha($first) && $first !== '_') {
-            throw new \RuntimeException(
+            throw new XmlParseError(
                 "Expected XML name start at position {$this->pos}, got '$first'"
             );
         }
@@ -192,23 +216,31 @@ final class XmlParser {
 
     private function current(): string {
         if ($this->pos >= $this->len) {
-            throw new \RuntimeException("Unexpected end of input at position {$this->pos}");
+            throw new XmlParseError("Unexpected end of input at position {$this->pos}");
         }
         return $this->src[$this->pos];
     }
 
     private function expect(string $char): void {
         if ($this->pos >= $this->len) {
-            throw new \RuntimeException(
+            throw new XmlParseError(
                 "Expected '$char' but reached end of input"
             );
         }
         if ($this->src[$this->pos] !== $char) {
-            throw new \RuntimeException(
+            throw new XmlParseError(
                 "Expected '$char' at position {$this->pos}, got '{$this->src[$this->pos]}'"
             );
         }
         $this->pos++;
+    }
+
+    // ── HTML void-element check ───────────────────────────────────────────────
+
+    /** Returns true when in html mode and $tag is a void element (case-insensitive). */
+    private function isVoidElement(string $tag): bool {
+        return $this->mode === 'html'
+            && in_array(strtolower($tag), self::VOID_ELEMENTS, true);
     }
 
     // ── Entity decoding ───────────────────────────────────────────────────────
