@@ -23,6 +23,15 @@ export function render(container, { api }) {
       </div>
 
       <div class="transform-col">
+        <label>Emmet</label>
+        <textarea id="emmet-input" placeholder="Paste Emmet here..."></textarea>
+        <div class="error-msg" id="emmet-error"></div>
+      </div>
+
+      <div class="transform-controls">
+      </div>
+
+      <div class="transform-col">
         <div class="transform-col-header">
           <label>Tree</label>
           <div class="tree-checkboxes">
@@ -31,15 +40,6 @@ export function render(container, { api }) {
           </div>
         </div>
         <div class="transform-tree" id="tree-output"></div>
-      </div>
-
-      <div class="transform-controls">
-      </div>
-
-      <div class="transform-col">
-        <label>Emmet</label>
-        <textarea id="emmet-input" placeholder="Paste Emmet here..."></textarea>
-        <div class="error-msg" id="emmet-error"></div>
       </div>
     </div>
   `;
