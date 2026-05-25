@@ -81,9 +81,14 @@ final class ClickOpsTest extends TestCase {
         TransformEngine::applyClickOp($this->tree(), ['type'=>'frobnicate','path'=>[0]]);
     }
     public function testRenameMissingWithThrows(): void {
-        $this->expectException(\App\ClickOpError::class);
-        TransformEngine::applyClickOp($this->tree(), ['type'=>'rename','path'=>[0]]);
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'rename','path'=>[0]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('missing_with', $e->code);
+        }
     }
+    // try/catch idiom (rather than expectException) so we can inspect $e->code on the caught exception
     public function testSwapWithNextSibling(): void {
         // Tree: <div><h1/><p><span/></p></div>
         // swap path [0] with its next sibling → <div><p><span/></p><h1/></div>
@@ -110,7 +115,6 @@ final class ClickOpsTest extends TestCase {
             $this->assertSame('bad_path', $e->code);
         }
     }
-    // try/catch idiom (rather than expectException) so we can inspect $e->code on the caught exception
     public function testClickOpErrorCarriesCode(): void {
         try {
             TransformEngine::applyClickOp($this->tree(), ['type'=>'delete','path'=>[]]);

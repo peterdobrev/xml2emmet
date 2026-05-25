@@ -43,7 +43,6 @@ final class ClickOps {
         $newChildren[$idx]     = $b;
         $newChildren[$idx + 1] = $a;
         $newParent = new Node($parent->tag, $parent->attrs, $newChildren, $parent->text, $parent->appliedRules);
-        if ($parentPath === []) return $newParent;
         return self::replaceAt($root, $parentPath, $newParent);
     }
 
@@ -53,7 +52,6 @@ final class ClickOps {
         }
         $node = self::getAt($root, $path);
         $newNode = new Node($op['with'], $node->attrs, $node->children, $node->text, $node->appliedRules);
-        if ($path === []) return $newNode;
         return self::replaceAt($root, $path, $newNode);
     }
 
