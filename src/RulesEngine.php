@@ -15,40 +15,35 @@ final class RulesEngine {
      */
     public static function apply(Node $root, array $rules): Node {
         foreach ($rules as $rule) {
-            $root = self::walk($root, [$rule]);
+            $root = self::walk($root, $rule);
         }
         return $root;
     }
 
     /**
-     * Pre-order, top-down traversal.  On match, recursion stops at the matched
+     * Pre-order, top-down traversal. On match, recursion stops at the matched
      * node (the replacement subtree is not re-walked for the same rule due to
      * the appliedRules guard, and is also returned as-is rather than re-walked
-     * for other rules).  Called with a single-element array from apply() so
-     * that multi-rule sequencing is handled at the apply() level.
-     *
-     * @param Rule[] $rules
+     * for other rules).
      */
-    private static function walk(Node $node, array $rules): Node {
-        foreach ($rules as $rule) {
-            // Guard: skip this rule if the node was already produced by it.
-            if (in_array($rule->id, $node->appliedRules, true)) {
-                continue;
-            }
+    private static function walk(Node $node, Rule $rule): Node {
+        // Guard: skip this rule if the node was already produced by it.
+        if (in_array($rule->id, $node->appliedRules, true)) {
+            return $node;
+        }
 
-            $bindings = self::matchNode($rule->pattern, $node);
-            if ($bindings !== null) {
-                // Substitute bound placeholders into the replacement template,
-                // then tag every node in the result with the rule id.
-                $materialized = self::substitute($rule->replacement, $bindings);
-                return self::tagSubtree($materialized, $rule->id);
-            }
+        $bindings = self::matchNode($rule->pattern, $node);
+        if ($bindings !== null) {
+            // Substitute bound placeholders into the replacement template,
+            // then tag every node in the result with the rule id.
+            $materialized = self::substitute($rule->replacement, $bindings);
+            return self::tagSubtree($materialized, $rule->id);
         }
 
         // No rule matched at this node: rebuild with recursively-walked children.
         $newChildren = [];
         foreach ($node->children as $child) {
-            $newChildren[] = self::walk($child, $rules);
+            $newChildren[] = self::walk($child, $rule);
         }
 
         if ($newChildren === $node->children) {

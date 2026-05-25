@@ -53,6 +53,15 @@ final class ApplyRulesTest extends TestCase {
         $rule = new Rule('r', $pattern, new Node('em'));
         NodeAssert::assertEquals($tree, TransformEngine::applyRules($tree, [$rule]));
     }
+    public function testE7bAttributeSubsetMatches(): void {
+        // Pattern requires rel=nofollow; candidate has rel=nofollow PLUS an extra href.
+        // Subset semantics: pattern attrs are required, candidate may have extras.
+        $pattern = (new Node('a'))->withAttr('rel','nofollow');
+        $rule    = new Rule('r', $pattern, new Node('em'));
+        $tree    = (new Node('a'))->withAttr('rel','nofollow')->withAttr('href','/x');
+        $expected = new Node('em');
+        NodeAssert::assertEquals($expected, TransformEngine::applyRules($tree, [$rule]));
+    }
     public function testE8AttributesAndTextCarryThroughPlaceholders(): void {
         $pattern = (new Node('wrap'))->withChild(new Node('E1'));
         $replacement = (new Node('out'))->withChild(new Node('E1'));
