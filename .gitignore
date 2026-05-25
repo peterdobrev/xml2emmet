@@ -1,1 +1,3 @@
 docs/superpowers/
+/vendor/
+/.phpunit.cache/
