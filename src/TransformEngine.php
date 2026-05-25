@@ -64,6 +64,15 @@ final class TransformEngine {
         return ' ' . implode(' ', $pairs);
     }
 
+    /**
+     * Apply a list of rules to the tree, returning a new (possibly transformed) tree.
+     *
+     * @param Rule[] $rules
+     */
+    public static function applyRules(Node $root, array $rules): Node {
+        return RulesEngine::apply($root, $rules);
+    }
+
     public static function emmetEmit(Node $n, string $mode = 'html'): string {
         return self::emitNode($n, $mode, false);
     }
