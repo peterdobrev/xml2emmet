@@ -40,7 +40,7 @@ final class Router {
             return ($r['handler'])($req, $params, $this->userId ?? 0);
         }
         if ($matchedPath) {
-            return Response::error(405, 'not_found', 'Method not allowed for this path.');
+            return Response::error(405, 'method_not_allowed', 'Method not allowed for this path.');
         }
         return Response::error(404, 'not_found', 'Route not found.');
     }

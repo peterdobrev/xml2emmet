@@ -110,7 +110,7 @@ final class TransformHandler {
 
         return Response::json(200, [
             'output'   => $output,
-            'tree'     => NodeJson::toArray($tree),
+            'tree'     => NodeJson::toArray($emitTree),
             'saved_id' => $savedId,
         ]);
     }
