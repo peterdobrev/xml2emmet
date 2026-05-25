@@ -16,7 +16,7 @@ async function _fetch(method, path, body) {
   let json;
   try { json = await res.json(); } catch { json = {}; }
   if (!res.ok) {
-    if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register') {
+    if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register' && path !== '/api/auth/me') {
       location.reload();
       return { ok: false, status: 401, code: 'unauthenticated', message: 'Session expired.', details: {} };
     }
