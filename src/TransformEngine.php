@@ -6,6 +6,11 @@ final class TransformEngine {
         return $p->parse();
     }
 
+    public static function xmlParse(string $src, string $mode = 'xml'): Node {
+        $p = new XmlParser($src);
+        return $p->parse();
+    }
+
     public static function emmetEmit(Node $n, string $mode = 'html'): string {
         return self::emitNode($n, $mode, false);
     }

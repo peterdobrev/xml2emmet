@@ -1,0 +1,189 @@
+<?php
+namespace App;
+
+/**
+ * Minimal XML scanner: parses a single XML element (self-closing or open/close pair)
+ * with optional attributes into a Node tree.
+ *
+ * Scope (Task 3.1): self-closing tags, open/close pairs with no content, attributes
+ * with quoted values, entity decoding for the five standard XML entities.
+ * Children are deferred to Task 3.2.
+ */
+final class XmlParser {
+    private int $pos = 0;
+    private int $len;
+
+    public function __construct(private readonly string $src) {
+        $this->len = strlen($src);
+    }
+
+    // ── Public entry ─────────────────────────────────────────────────────────
+
+    public function parse(): Node {
+        $this->skipWhitespace();
+        $node = $this->parseElement();
+        $this->skipWhitespace();
+        if ($this->pos !== $this->len) {
+            throw new \RuntimeException(
+                "Unexpected trailing content at position {$this->pos}"
+            );
+        }
+        return $node;
+    }
+
+    // ── Element parsing ───────────────────────────────────────────────────────
+
+    private function parseElement(): Node {
+        $this->expect('<');
+
+        $tag = $this->parseName();
+
+        // Parse attributes
+        $attrs = [];
+        while (true) {
+            $this->skipWhitespace();
+            if ($this->peek() === '/' || $this->peek() === '>') {
+                break;
+            }
+            [$name, $value] = $this->parseAttribute();
+            $attrs[$name] = $value;
+        }
+
+        // Self-closing: `<tag .../>`
+        if ($this->peek() === '/') {
+            $this->pos++; // consume '/'
+            $this->expect('>');
+            return $this->buildNode($tag, $attrs, []);
+        }
+
+        // Opening tag end: `<tag ...>`
+        $this->expect('>');
+
+        // Closing tag: `</tag>` — no inner content for Task 3.1
+        $this->skipWhitespace();
+        $this->expect('<');
+        $this->expect('/');
+        $closeTag = $this->parseName();
+        if ($closeTag !== $tag) {
+            throw new \RuntimeException(
+                "Mismatched tags: opened <$tag> closed </$closeTag>"
+            );
+        }
+        $this->skipWhitespace();
+        $this->expect('>');
+
+        return $this->buildNode($tag, $attrs, []);
+    }
+
+    // ── Attribute parsing ─────────────────────────────────────────────────────
+
+    /** @return array{string, string} [name, value] */
+    private function parseAttribute(): array {
+        $name = $this->parseName();
+        $this->skipWhitespace();
+        $this->expect('=');
+        $this->skipWhitespace();
+        $value = $this->parseAttributeValue();
+        return [$name, $value];
+    }
+
+    private function parseAttributeValue(): string {
+        $quote = $this->current();
+        if ($quote !== '"' && $quote !== "'") {
+            throw new \RuntimeException(
+                "Expected quoted attribute value at position {$this->pos}, got '{$quote}'"
+            );
+        }
+        $this->pos++; // consume opening quote
+        $raw = '';
+        while ($this->pos < $this->len && $this->current() !== $quote) {
+            $raw .= $this->current();
+            $this->pos++;
+        }
+        $this->expect($quote); // consume closing quote
+        return $this->decodeEntities($raw);
+    }
+
+    // ── Lexer helpers ─────────────────────────────────────────────────────────
+
+    /**
+     * Parse an XML name: starts with letter or '_', followed by letters, digits,
+     * '-', '_', '.', ':'.
+     */
+    private function parseName(): string {
+        if ($this->pos >= $this->len) {
+            throw new \RuntimeException("Expected XML name but reached end of input");
+        }
+        $start = $this->pos;
+        $first = $this->current();
+        if (!ctype_alpha($first) && $first !== '_') {
+            throw new \RuntimeException(
+                "Expected XML name start at position {$this->pos}, got '$first'"
+            );
+        }
+        $this->pos++;
+        while ($this->pos < $this->len) {
+            $c = $this->current();
+            if (ctype_alnum($c) || $c === '-' || $c === '_' || $c === '.' || $c === ':') {
+                $this->pos++;
+            } else {
+                break;
+            }
+        }
+        return substr($this->src, $start, $this->pos - $start);
+    }
+
+    private function skipWhitespace(): void {
+        while ($this->pos < $this->len && ctype_space($this->src[$this->pos])) {
+            $this->pos++;
+        }
+    }
+
+    private function peek(): ?string {
+        return $this->pos < $this->len ? $this->src[$this->pos] : null;
+    }
+
+    private function current(): string {
+        if ($this->pos >= $this->len) {
+            throw new \RuntimeException("Unexpected end of input at position {$this->pos}");
+        }
+        return $this->src[$this->pos];
+    }
+
+    private function expect(string $char): void {
+        if ($this->pos >= $this->len) {
+            throw new \RuntimeException(
+                "Expected '$char' but reached end of input"
+            );
+        }
+        if ($this->src[$this->pos] !== $char) {
+            throw new \RuntimeException(
+                "Expected '$char' at position {$this->pos}, got '{$this->src[$this->pos]}'"
+            );
+        }
+        $this->pos++;
+    }
+
+    // ── Entity decoding ───────────────────────────────────────────────────────
+
+    private function decodeEntities(string $raw): string {
+        return strtr($raw, [
+            '&amp;'  => '&',
+            '&lt;'   => '<',
+            '&gt;'   => '>',
+            '&quot;' => '"',
+            '&apos;' => "'",
+        ]);
+    }
+
+    // ── Node construction ─────────────────────────────────────────────────────
+
+    /**
+     * @param array<string,string> $attrs
+     * @param Node[] $children
+     */
+    private function buildNode(string $tag, array $attrs, array $children): Node {
+        $node = new Node($tag, $attrs, $children);
+        return $node;
+    }
+}
