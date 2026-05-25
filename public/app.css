@@ -42,11 +42,12 @@ html, body {
 
 /* Auth root fills screen */
 #auth-root {
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+#auth-root:empty { display: none; }
 
 /* Buttons */
 button {
