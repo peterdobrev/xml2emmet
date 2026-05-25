@@ -12,6 +12,7 @@ use App\Http\Request;
 use App\Http\Response;
 use App\Http\Validation;
 use App\Node;
+use App\Rule;
 use App\TransformEngine;
 use App\XmlParseError;
 
@@ -67,7 +68,7 @@ final class TransformHandler {
                 } catch (EmmetParseError $e) {
                     return Response::error(422, 'parse_error', "Rule {$row['id']} failed to parse: " . $e->getMessage(), ['rule_id' => $row['id']]);
                 }
-                $ruleObjs[] = ['id' => (string)$row['id'], 'pattern' => $pat, 'replacement' => $rep];
+                $ruleObjs[] = new Rule((string)$row['id'], $pat, $rep);
             }
             $tree = TransformEngine::applyRules($tree, $ruleObjs);
         }

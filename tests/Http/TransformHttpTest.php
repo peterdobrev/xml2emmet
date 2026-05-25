@@ -19,7 +19,7 @@ final class TransformHttpTest extends HttpTestCase {
         ]);
         $this->assertSame(200, $status, json_encode($body));
         $this->assertNotEmpty($body['output']);
-        $this->assertSame('_root', $body['tree']['tag']);
+        $this->assertSame('ul', $body['tree']['tag']);
         $this->assertNull($body['saved_id']);
     }
 
@@ -58,7 +58,7 @@ final class TransformHttpTest extends HttpTestCase {
             'input'     => '<ul><li>a</li><li>b</li></ul>',
             'settings'  => $this->settings('xml'),
             'rule_ids'  => [],
-            'click_ops' => [[ 'type' => 'rename', 'path' => [0], 'with' => 'ol' ]],
+            'click_ops' => [[ 'type' => 'rename', 'path' => [], 'with' => 'ol' ]],
             'save'      => false,
         ]);
         $this->assertSame(200, $status);

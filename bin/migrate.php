@@ -31,9 +31,7 @@ foreach ($files as $path) {
     }
     echo "apply $name … ";
     $sql = file_get_contents($path);
-    $pdo->beginTransaction();
     try {
-        // MySQL DDL implicitly commits, but wrap for any DML in future migrations.
         foreach (preg_split('/;\s*\n/', $sql) as $stmt) {
             $stmt = trim($stmt);
             if ($stmt === '') continue;
@@ -41,11 +39,9 @@ foreach ($files as $path) {
         }
         $stmt = $pdo->prepare("INSERT INTO schema_migrations (filename) VALUES (?)");
         $stmt->execute([$name]);
-        $pdo->commit();
         echo "ok\n";
         $ranAny = true;
     } catch (\Throwable $e) {
-        if ($pdo->inTransaction()) $pdo->rollBack();
         fwrite(STDERR, "FAILED: " . $e->getMessage() . "\n");
         exit(1);
     }

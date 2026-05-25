@@ -6,7 +6,7 @@ final class RulesHttpTest extends HttpTestCase {
     public function testCrudFlow(): void {
         $this->registerAndLogin();
 
-        [$cs, , $cb] = $this->post('/api/rules', ['name' => 'flat', 'pattern' => 'ul>li*', 'replacement' => 'ol>li*']);
+        [$cs, , $cb] = $this->post('/api/rules', ['name' => 'flat', 'pattern' => 'ul>li*3', 'replacement' => 'ol>li*3']);
         $this->assertSame(200, $cs);
         $id = $cb['id'];
 
@@ -15,7 +15,7 @@ final class RulesHttpTest extends HttpTestCase {
         $this->assertCount(1, $lb['items']);
         $this->assertSame('flat', $lb['items'][0]['name']);
 
-        [$us, , ] = $this->put("/api/rules/$id", ['name' => 'renamed', 'pattern' => 'ul>li*', 'replacement' => 'ol>li*']);
+        [$us, , ] = $this->put("/api/rules/$id", ['name' => 'renamed', 'pattern' => 'ul>li*3', 'replacement' => 'ol>li*3']);
         $this->assertSame(200, $us);
         [, , $lb2] = $this->get('/api/rules');
         $this->assertSame('renamed', $lb2['items'][0]['name']);
