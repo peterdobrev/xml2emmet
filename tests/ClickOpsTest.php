@@ -84,6 +84,7 @@ final class ClickOpsTest extends TestCase {
         $this->expectException(\App\ClickOpError::class);
         TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[0]]);
     }
+    // try/catch idiom (rather than expectException) so we can inspect $e->code on the caught exception
     public function testClickOpErrorCarriesCode(): void {
         try {
             TransformEngine::applyClickOp($this->tree(), ['type'=>'delete','path'=>[]]);

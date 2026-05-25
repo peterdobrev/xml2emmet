@@ -9,7 +9,7 @@ final class ClickOpError extends \RuntimeException {
         if ($name === 'code') {
             return $this->errorCode;
         }
-        throw new \Error("Undefined property: " . static::class . "::\$$name");
+        throw new \Error("Undefined property: " . self::class . "::\$$name");
     }
 
     public function __construct(
