@@ -30,4 +30,14 @@ final class XmlEmitTest extends TestCase {
         $n = (new Node('div'))->withChild(new Node('br'));
         $this->assertSame('<div><br></div>', TransformEngine::xmlEmit($n, 'html'));
     }
+    public function testD7XmlRoundTrip(): void {
+        $src = '<div><h1>Hi</h1><p class="x">Lorem</p></div>';
+        $node = TransformEngine::xmlParse($src);
+        $this->assertSame($src, TransformEngine::xmlEmit($node));
+    }
+    public function testD8HtmlRoundTrip(): void {
+        $src = '<div><br><img src="x.png"></div>';
+        $node = TransformEngine::xmlParse($src, 'html');
+        $this->assertSame($src, TransformEngine::xmlEmit($node, 'html'));
+    }
 }
