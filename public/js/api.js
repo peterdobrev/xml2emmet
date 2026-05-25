@@ -38,7 +38,7 @@ export const me = () =>
   _fetch('GET', '/api/auth/me');
 
 export const transform = (body) =>
-  _fetch('POST', '/api/transform', body);
+  _fetch('POST', '/api/transform', { ...body, save: true });
 
 export const rulesList = () =>
   _fetch('GET', '/api/rules');
