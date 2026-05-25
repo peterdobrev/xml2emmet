@@ -7,7 +7,6 @@ final class NodeAssertTest extends TestCase {
         $a = (new Node('a'))->withAttr('x','1')->withAttr('y','2');
         $b = (new Node('a'))->withAttr('y','2')->withAttr('x','1');
         NodeAssert::assertEquals($a, $b); // attr order ignored
-        $this->expectNotToPerformAssertions();
     }
     public function testDifferentTagsFail(): void {
         $this->expectException(\PHPUnit\Framework\AssertionFailedError::class);
