@@ -24,6 +24,7 @@ html, body {
   display: flex;
   height: 100vh;
 }
+#app-root[hidden] { display: none; }
 
 #sidebar-root {
   width: 200px;
