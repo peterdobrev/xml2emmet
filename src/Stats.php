@@ -48,7 +48,7 @@ final class Stats {
             $depthHistogram[$depth] = ($depthHistogram[$depth] ?? 0) + 1;
         }
         if (isset($n->attrs['class']) && $n->attrs['class'] !== '') {
-            foreach (preg_split('/\s+/', trim($n->attrs['class'])) ?: [] as $cls) {
+            foreach (preg_split('/\s+/', trim($n->attrs['class'])) as $cls) {
                 if ($cls === '') continue;
                 $classCounts[$cls] = ($classCounts[$cls] ?? 0) + 1;
             }

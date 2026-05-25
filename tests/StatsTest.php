@@ -56,6 +56,21 @@ final class StatsTest extends TestCase {
         $this->assertSame(['foo' => 1, 'bar' => 1], $stats['classCounts']);
     }
 
+    public function testClassCountsWhitespaceOnlyClassYieldsNothing(): void {
+        $tree = (new Node('div'))->withAttr('class', '   ');
+        $stats = Stats::compute($tree);
+        $this->assertSame([], $stats['classCounts']);
+    }
+
+    public function testDepthHistogramExcludesTextNodes(): void {
+        // <p>hi<b/></p> — #text and <b> are both at depth 2, but only <b> counts.
+        $tree = (new Node('p'))
+            ->withChild((new Node('#text'))->withText('hi'))
+            ->withChild(new Node('b'));
+        $stats = Stats::compute($tree);
+        $this->assertSame([1 => 1, 2 => 1], $stats['depthHistogram']);
+    }
+
     public function testDepthHistogramCountsNodesPerDepth(): void {
         // root (depth 1) > [a (2), b (2) > c (3)]
         $tree = (new Node('root'))
