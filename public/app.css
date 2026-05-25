@@ -316,6 +316,25 @@ h2 {
   color: var(--text-muted);
 }
 
+.transform-stats-bar {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-dim);
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.transform-stats-bar .stats-key {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+
 .transform-col-header {
   display: flex;
   align-items: center;

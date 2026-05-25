@@ -46,6 +46,7 @@ export function render(container, { api }) {
         <div class="transform-tree" id="tree-output"></div>
       </div>
     </div>
+    <div id="transform-stats"></div>
   `;
 
   let mode = 'html';
@@ -95,6 +96,7 @@ export function render(container, { api }) {
     if (res.ok) {
       container.querySelector('#emmet-input').value = res.data.output;
       renderTree(container.querySelector('#tree-output'), res.data.tree);
+      showStats(input);
     } else if (res.code === 'parse_error') {
       container.querySelector('#xml-error').textContent = res.message;
     } else {
@@ -113,12 +115,30 @@ export function render(container, { api }) {
     if (res.ok) {
       container.querySelector('#xml-input').value = res.data.output;
       renderTree(container.querySelector('#tree-output'), res.data.tree);
+      showStats(res.data.output);
     } else if (res.code === 'parse_error') {
       container.querySelector('#emmet-error').textContent = res.message;
     } else {
       container.querySelector('#convert-error').textContent = res.message;
     }
   });
+
+  async function showStats(htmlInput) {
+    const el = container.querySelector('#transform-stats');
+    const res = await api.stats('html', htmlInput);
+    if (!res.ok) { el.innerHTML = ''; return; }
+    const d = res.data;
+    const classes = d.top_classes.slice(0, 5).map(c => escHtml(c.name)).join(', ');
+    el.innerHTML = `
+      <div class="transform-stats-bar">
+        <span><span class="stats-key">elements</span> ${d.elements}</span>
+        <span><span class="stats-key">tags</span> ${d.distinct_tags}</span>
+        <span><span class="stats-key">depth</span> ${d.max_depth}</span>
+        <span><span class="stats-key">attrs</span> ${d.attributes}</span>
+        ${classes ? `<span><span class="stats-key">classes</span> ${classes}</span>` : ''}
+      </div>
+    `;
+  }
 
   function clearErrors() {
     ['#xml-error', '#emmet-error', '#convert-error'].forEach(sel => {
