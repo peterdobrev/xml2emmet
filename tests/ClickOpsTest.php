@@ -84,4 +84,52 @@ final class ClickOpsTest extends TestCase {
         $this->expectException(\App\ClickOpError::class);
         TransformEngine::applyClickOp($this->tree(), ['type'=>'swap','path'=>[0]]);
     }
+    public function testClickOpErrorCarriesCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'delete','path'=>[]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('root_delete', $e->code);
+        }
+    }
+    public function testBadPathHasCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'delete','path'=>[5]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('bad_path', $e->code);
+        }
+    }
+    public function testUnknownOpHasCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'frobnicate','path'=>[0]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('unknown_op', $e->code);
+        }
+    }
+    public function testUnwrapRootHasCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'unwrap','path'=>[]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('unwrap_root', $e->code);
+        }
+    }
+    public function testMissingWithHasCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'wrap','path'=>[0]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('missing_with', $e->code);
+        }
+    }
+    public function testMissingToHasCode(): void {
+        try {
+            TransformEngine::applyClickOp($this->tree(), ['type'=>'move','path'=>[0]]);
+            $this->fail('expected ClickOpError');
+        } catch (\App\ClickOpError $e) {
+            $this->assertSame('missing_to', $e->code);
+        }
+    }
 }

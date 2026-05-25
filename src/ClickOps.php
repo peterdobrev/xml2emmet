@@ -7,7 +7,7 @@ final class ClickOps {
     public static function apply(Node $root, array $op): Node {
         $type = $op['type'] ?? '';
         if (!in_array($type, self::VALID_TYPES, true)) {
-            throw new ClickOpError("Unknown click-op type: $type");
+            throw new ClickOpError('unknown_op', "Unknown click-op type: $type");
         }
 
         $path = $op['path'] ?? [];
@@ -28,7 +28,7 @@ final class ClickOps {
 
     private static function swap(Node $root, array $path, array $op): Node {
         if (!isset($op['with']) || $op['with'] === '') {
-            throw new ClickOpError("swap requires a non-empty 'with' tag");
+            throw new ClickOpError('missing_with', "swap requires a non-empty 'with' tag");
         }
         $node = self::getAt($root, $path);
         $newNode = new Node($op['with'], $node->attrs, $node->children, $node->text, $node->appliedRules);
@@ -37,14 +37,14 @@ final class ClickOps {
 
     private static function unwrap(Node $root, array $path): Node {
         if ($path === []) {
-            throw new ClickOpError("unwrap requires a non-empty path");
+            throw new ClickOpError('unwrap_root', "unwrap requires a non-empty path");
         }
         return self::unwrapAt($root, $path);
     }
 
     private static function wrap(Node $root, array $path, array $op): Node {
         if (!isset($op['with']) || $op['with'] === '') {
-            throw new ClickOpError("wrap requires a non-empty 'with' tag");
+            throw new ClickOpError('missing_with', "wrap requires a non-empty 'with' tag");
         }
         $node = self::getAt($root, $path);
         $wrapper = new Node($op['with'], [], [$node]);
@@ -53,17 +53,17 @@ final class ClickOps {
 
     private static function delete(Node $root, array $path): Node {
         if ($path === []) {
-            throw new ClickOpError("delete requires a non-empty path (cannot delete root)");
+            throw new ClickOpError('root_delete', "delete requires a non-empty path (cannot delete root)");
         }
         return self::replaceAt($root, $path, null);
     }
 
     private static function move(Node $root, array $path, array $op): Node {
         if ($path === []) {
-            throw new ClickOpError("move requires a non-empty source path");
+            throw new ClickOpError('bad_path', "move requires a non-empty source path");
         }
         if (!isset($op['to']) || !is_array($op['to'])) {
-            throw new ClickOpError("move requires a 'to' array path");
+            throw new ClickOpError('missing_to', "move requires a 'to' array path");
         }
         $to = $op['to'];
         self::validatePath($to);
@@ -120,6 +120,7 @@ final class ClickOps {
         foreach ($path as $depth => $idx) {
             if (!is_int($idx) || $idx < 0 || $idx >= count($node->children)) {
                 throw new ClickOpError(
+                    'bad_path',
                     "Path index $idx out of range at depth $depth (node <{$node->tag}> has " . count($node->children) . " children)"
                 );
             }
@@ -135,7 +136,7 @@ final class ClickOps {
     private static function replaceAt(Node $root, array $path, ?Node $new): Node {
         if ($path === []) {
             if ($new === null) {
-                throw new ClickOpError("Cannot remove root via replaceAt with empty path");
+                throw new ClickOpError('root_delete', "Cannot remove root via replaceAt with empty path");
             }
             return $new;
         }
@@ -145,6 +146,7 @@ final class ClickOps {
 
         if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
             throw new ClickOpError(
+                'bad_path',
                 "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
             );
         }
@@ -197,6 +199,7 @@ final class ClickOps {
 
         if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
             throw new ClickOpError(
+                'bad_path',
                 "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
             );
         }
@@ -220,7 +223,7 @@ final class ClickOps {
      */
     private static function insertAt(Node $root, array $path, Node $new): Node {
         if ($path === []) {
-            throw new ClickOpError("insertAt requires a non-empty path");
+            throw new ClickOpError('bad_path', "insertAt requires a non-empty path");
         }
 
         if (count($path) === 1) {
@@ -229,6 +232,7 @@ final class ClickOps {
             $children  = $root->children;
             if (!is_int($insertIdx) || $insertIdx < 0 || $insertIdx > count($children)) {
                 throw new ClickOpError(
+                    'bad_path',
                     "Insert index $insertIdx out of range (node <{$root->tag}> has " . count($children) . " children)"
                 );
             }
@@ -251,6 +255,7 @@ final class ClickOps {
 
         if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
             throw new ClickOpError(
+                'bad_path',
                 "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
             );
         }
@@ -270,7 +275,7 @@ final class ClickOps {
     private static function validatePath(array $path): void {
         foreach ($path as $i => $idx) {
             if (!is_int($idx)) {
-                throw new ClickOpError("Path element at position $i must be an integer");
+                throw new ClickOpError('bad_path', "Path element at position $i must be an integer");
             }
         }
     }
