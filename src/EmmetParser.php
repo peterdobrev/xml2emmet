@@ -19,9 +19,11 @@ final class EmmetParser {
         }
 
         // Collect all qualifiers first so we can write attrs in canonical order
-        // (id first, then class) regardless of lexing order.
-        $id      = null;
-        $classes = [];
+        // (id first, then class, then explicit [k=v] attrs) regardless of lexing order.
+        $id         = null;
+        $classes    = [];
+        $attrsList  = []; // list of [k => v] maps in encounter order
+        $text       = null;
 
         while ($this->pos < $this->len) {
             $ch = $this->peek();
@@ -31,6 +33,12 @@ final class EmmetParser {
             } elseif ($ch === '.') {
                 $this->pos++;
                 $classes[] = $this->consumeIdent();
+            } elseif ($ch === '[') {
+                $this->pos++;
+                $attrsList[] = $this->parseAttrList();
+            } elseif ($ch === '{') {
+                $this->pos++;
+                $text = $this->parseTextLiteral();
             } else {
                 break;
             }
@@ -43,6 +51,14 @@ final class EmmetParser {
         }
         if ($classes !== []) {
             $node = $node->withAttr('class', implode(' ', $classes));
+        }
+        foreach ($attrsList as $map) {
+            foreach ($map as $k => $v) {
+                $node = $node->withAttr($k, $v);
+            }
+        }
+        if ($text !== null) {
+            $node = $node->withText($text);
         }
 
         return $node;
@@ -88,5 +104,96 @@ final class EmmetParser {
             }
         }
         return substr($this->input, $start, $this->pos - $start);
+    }
+
+    /**
+     * Parse whitespace-separated key=value pairs up to the closing `]`.
+     * The opening `[` has already been consumed by the caller.
+     * Returns a map of attribute name => value.
+     *
+     * @return array<string,string>
+     */
+    private function parseAttrList(): array {
+        $attrs = [];
+        while ($this->pos < $this->len && $this->peek() !== ']') {
+            // Skip whitespace between pairs
+            while ($this->pos < $this->len && ctype_space($this->peek())) {
+                $this->pos++;
+            }
+            if ($this->peek() === ']' || $this->pos >= $this->len) {
+                break;
+            }
+            // Consume key: everything up to `=`
+            $keyStart = $this->pos;
+            while ($this->pos < $this->len && $this->peek() !== '=' && $this->peek() !== ']' && !ctype_space($this->peek())) {
+                $this->pos++;
+            }
+            $key = substr($this->input, $keyStart, $this->pos - $keyStart);
+            if ($key === '') {
+                break;
+            }
+            // Consume `=`
+            if (!$this->consumeIf('=')) {
+                // Attribute with no value — skip for now
+                continue;
+            }
+            // Consume value
+            $quote = $this->peek();
+            if ($quote === '"' || $quote === "'") {
+                $this->pos++; // consume opening quote
+                $valStart = $this->pos;
+                while ($this->pos < $this->len && $this->peek() !== $quote) {
+                    $this->pos++;
+                }
+                $value = substr($this->input, $valStart, $this->pos - $valStart);
+                $this->consumeIf($quote); // consume closing quote
+            } else {
+                // Bare value: terminated by whitespace, `]`, `"`, or `'`
+                $valStart = $this->pos;
+                while ($this->pos < $this->len) {
+                    $ch = $this->peek();
+                    if ($ch === ']' || $ch === '"' || $ch === "'" || ctype_space($ch)) {
+                        break;
+                    }
+                    $this->pos++;
+                }
+                $value = substr($this->input, $valStart, $this->pos - $valStart);
+            }
+            $attrs[$key] = $value;
+        }
+        $this->consumeIf(']'); // consume closing `]`
+        return $attrs;
+    }
+
+    /**
+     * Parse literal text up to the closing `}`.
+     * The opening `{` has already been consumed by the caller.
+     * Recognises `\{` and `\}` as escape sequences for literal braces.
+     * Braces do not nest.
+     */
+    private function parseTextLiteral(): string {
+        $buf = '';
+        while ($this->pos < $this->len) {
+            $ch = $this->peek();
+            if ($ch === '}') {
+                $this->pos++; // consume closing `}`
+                break;
+            }
+            if ($ch === '\\') {
+                $this->pos++; // consume backslash
+                $next = $this->peek();
+                if ($next === '{' || $next === '}') {
+                    $buf .= $next;
+                    $this->pos++;
+                } else {
+                    $buf .= '\\'; // literal backslash
+                    // leave next char to be consumed on next iteration
+                }
+                continue;
+            }
+            $buf .= $ch;
+            $this->pos++;
+        }
+        return $buf;
     }
 }

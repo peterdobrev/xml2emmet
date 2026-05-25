@@ -17,4 +17,16 @@ final class EmmetParseTest extends TestCase {
         $expected = (new Node('p'))->withAttr('id', 'x')->withAttr('class', 'a b');
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('p#x.a.b'));
     }
+    public function testA4Attribute(): void {
+        $expected = (new Node('a'))->withAttr('href', '/x');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a[href=/x]'));
+    }
+    public function testA5MultipleAttributesQuoted(): void {
+        $expected = (new Node('input'))->withAttr('type', 'text')->withAttr('name', 'q');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('input[type="text" name="q"]'));
+    }
+    public function testA6Text(): void {
+        $expected = (new Node('span'))->withText('hello world');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('span{hello world}'));
+    }
 }
