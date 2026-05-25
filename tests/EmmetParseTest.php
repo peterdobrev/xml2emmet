@@ -29,4 +29,16 @@ final class EmmetParseTest extends TestCase {
         $expected = (new Node('span'))->withText('hello world');
         NodeAssert::assertEquals($expected, TransformEngine::emmetParse('span{hello world}'));
     }
+    public function testA4bValuelessAttribute(): void {
+        $expected = (new Node('input'))->withAttr('type', 'text')->withAttr('required', '');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('input[type=text required]'));
+    }
+    public function testA6bMultipleTextBlocksConcatenate(): void {
+        $expected = (new Node('span'))->withText('helloworld');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('span{hello}{world}'));
+    }
+    public function testA5bQuotedValueWithEscape(): void {
+        $expected = (new Node('a'))->withAttr('title', 'say "hi"');
+        NodeAssert::assertEquals($expected, TransformEngine::emmetParse('a[title="say \"hi\""]'));
+    }
 }

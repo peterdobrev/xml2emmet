@@ -38,7 +38,7 @@ final class EmmetParser {
                 $attrsList[] = $this->parseAttrList();
             } elseif ($ch === '{') {
                 $this->pos++;
-                $text = $this->parseTextLiteral();
+                $text = ($text ?? '') . $this->parseTextLiteral();
             } else {
                 break;
             }
@@ -134,18 +134,31 @@ final class EmmetParser {
             }
             // Consume `=`
             if (!$this->consumeIf('=')) {
-                // Attribute with no value — skip for now
+                // Valueless attribute — grammar §3: assign empty string
+                $attrs[$key] = '';
                 continue;
             }
             // Consume value
             $quote = $this->peek();
             if ($quote === '"' || $quote === "'") {
                 $this->pos++; // consume opening quote
-                $valStart = $this->pos;
+                $value = '';
                 while ($this->pos < $this->len && $this->peek() !== $quote) {
+                    $ch = $this->peek();
+                    if ($ch === '\\') {
+                        $this->pos++; // consume backslash
+                        $next = $this->peek();
+                        if ($next === $quote || $next === '\\') {
+                            $value .= $next;
+                            $this->pos++;
+                        } else {
+                            $value .= '\\'; // literal backslash
+                        }
+                        continue;
+                    }
+                    $value .= $ch;
                     $this->pos++;
                 }
-                $value = substr($this->input, $valStart, $this->pos - $valStart);
                 $this->consumeIf($quote); // consume closing quote
             } else {
                 // Bare value: terminated by whitespace, `]`, `"`, or `'`
