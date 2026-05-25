@@ -73,6 +73,11 @@ final class TransformEngine {
         return RulesEngine::apply($root, $rules);
     }
 
+    /**
+     * Apply a single click-op to the tree, returning a new tree.
+     *
+     * @param array{type: string, path: int[], with?: string, to?: int[]} $op
+     */
     public static function applyClickOp(Node $root, array $op): Node {
         return ClickOps::apply($root, $op);
     }

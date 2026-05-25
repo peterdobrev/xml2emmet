@@ -68,9 +68,43 @@ final class ClickOps {
         $to = $op['to'];
         self::validatePath($to);
 
-        $subtree   = self::getAt($root, $path);
+        $subtree     = self::getAt($root, $path);
         $afterDelete = self::replaceAt($root, $path, null);
-        return self::insertAt($afterDelete, $to, $subtree);
+        $adjustedTo  = self::adjustDestinationAfterDelete($path, $to);
+        return self::insertAt($afterDelete, $adjustedTo, $subtree);
+    }
+
+    /**
+     * Adjust $to so it points to the same logical position after $from is deleted.
+     *
+     * If $from and $to share the same parent (i.e. $from's prefix equals $to's
+     * matching prefix), and $from's last index is < the corresponding index in
+     * $to, then deleting the source shifts that index in $to down by 1.
+     *
+     * Paths to entirely separate subtrees are unaffected.
+     *
+     * @param int[] $from
+     * @param int[] $to
+     * @return int[]
+     */
+    private static function adjustDestinationAfterDelete(array $from, array $to): array {
+        $parentDepth = count($from) - 1;
+        if (count($to) <= $parentDepth) {
+            return $to; // destination above or alongside source's parent — no shift
+        }
+        // Same-parent prefix check
+        for ($i = 0; $i < $parentDepth; $i++) {
+            if ($to[$i] !== $from[$i]) return $to; // diverged — no shift
+        }
+        // The source and destination share a parent. Shift only when source index
+        // is strictly less than dest index at that level (equal means dest slot is
+        // now occupied by the formerly-next sibling — no adjustment needed).
+        $srcIdx = $from[$parentDepth];
+        $dstIdx = $to[$parentDepth];
+        if ($srcIdx < $dstIdx) {
+            $to[$parentDepth] = $dstIdx - 1;
+        }
+        return $to;
     }
 
     // -------------------------------------------------------------------------
