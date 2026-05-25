@@ -51,11 +51,7 @@ final class TransformEngine {
     }
 
     private static function isHtmlVoidElement(string $tag): bool {
-        static $voids = [
-            'area', 'base', 'br', 'col', 'embed', 'hr', 'img',
-            'input', 'link', 'meta', 'source', 'track', 'wbr',
-        ];
-        return in_array(strtolower($tag), $voids, true);
+        return HtmlVoidElements::contains($tag);
     }
 
     /** @param array<string,string> $attrs */

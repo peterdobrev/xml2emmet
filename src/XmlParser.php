@@ -13,12 +13,6 @@ final class XmlParser {
     private int $pos = 0;
     private int $len;
 
-    /** HTML void elements (lowercase). */
-    private const VOID_ELEMENTS = [
-        'area', 'base', 'br', 'col', 'embed', 'hr', 'img',
-        'input', 'link', 'meta', 'source', 'track', 'wbr',
-    ];
-
     public function __construct(
         private readonly string $src,
         private readonly string $mode = 'xml',
@@ -239,8 +233,7 @@ final class XmlParser {
 
     /** Returns true when in html mode and $tag is a void element (case-insensitive). */
     private function isVoidElement(string $tag): bool {
-        return $this->mode === 'html'
-            && in_array(strtolower($tag), self::VOID_ELEMENTS, true);
+        return $this->mode === 'html' && HtmlVoidElements::contains($tag);
     }
 
     // ── Entity decoding ───────────────────────────────────────────────────────
