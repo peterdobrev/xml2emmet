@@ -41,4 +41,37 @@ final class StatsTest extends TestCase {
         $s = Stats::compute($tree);
         $this->assertSame(strlen('hi ') + strlen('bold') + strlen(' bye'), $s['textLength']);
     }
+
+    public function testClassCountsAggregatesAcrossClassAttribute(): void {
+        // <div class="btn primary"><span class="btn"/></div>
+        $tree = (new Node('div'))->withAttr('class', 'btn primary')
+            ->withChild((new Node('span'))->withAttr('class', 'btn'));
+        $stats = Stats::compute($tree);
+        $this->assertSame(['btn' => 2, 'primary' => 1], $stats['classCounts']);
+    }
+
+    public function testClassCountsIgnoresEmptyAndWhitespace(): void {
+        $tree = (new Node('div'))->withAttr('class', '   foo   bar  ');
+        $stats = Stats::compute($tree);
+        $this->assertSame(['foo' => 1, 'bar' => 1], $stats['classCounts']);
+    }
+
+    public function testDepthHistogramCountsNodesPerDepth(): void {
+        // root (depth 1) > [a (2), b (2) > c (3)]
+        $tree = (new Node('root'))
+            ->withChild(new Node('a'))
+            ->withChild((new Node('b'))->withChild(new Node('c')));
+        $stats = Stats::compute($tree);
+        $this->assertSame([1 => 1, 2 => 2, 3 => 1], $stats['depthHistogram']);
+    }
+
+    public function testExistingKeysStillPresent(): void {
+        $tree = (new Node('div'))->withChild(new Node('p'));
+        $stats = Stats::compute($tree);
+        $this->assertSame(2, $stats['nodeCount']);
+        $this->assertSame(2, $stats['depth']);
+        $this->assertArrayHasKey('tagHistogram', $stats);
+        $this->assertArrayHasKey('attrCount', $stats);
+        $this->assertArrayHasKey('textLength', $stats);
+    }
 }
