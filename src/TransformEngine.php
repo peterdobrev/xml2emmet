@@ -56,13 +56,49 @@ final class TransformEngine {
 
     /** @param Node[] $children */
     private static function emitChildren(array $children, string $mode): string {
-        $parts = [];
-        $count = count($children);
+        // Build run-length encoded list: [[Node, int], ...]
+        $runs = [];
         foreach ($children as $child) {
+            if ($runs !== [] && self::nodesEqual($child, $runs[count($runs) - 1][0])) {
+                $runs[count($runs) - 1][1]++;
+            } else {
+                $runs[] = [$child, 1];
+            }
+        }
+
+        $multipleRuns = count($runs) > 1;
+        $parts = [];
+        foreach ($runs as [$child, $runLen]) {
             // A _root sub-group among siblings needs parens to avoid ambiguity
-            $needsParens = $child->tag === '_root' && $count > 1;
-            $parts[] = self::emitNode($child, $mode, $needsParens);
+            $needsParens = $child->tag === '_root' && $multipleRuns;
+            $subtree = self::emitNode($child, $mode, $needsParens);
+            if ($runLen > 1) {
+                // Wrap in parens if the subtree is complex (has children → contains '>')
+                if ($child->children !== []) {
+                    $subtree = '(' . $subtree . ')';
+                }
+                $subtree .= '*' . $runLen;
+            }
+            $parts[] = $subtree;
         }
         return implode('+', $parts);
+    }
+
+    /** Deep equality ignoring appliedRules */
+    private static function nodesEqual(Node $a, Node $b): bool {
+        if ($a->tag !== $b->tag) return false;
+        if ($a->text !== $b->text) return false;
+        // Compare attrs order-independently
+        $attrsA = $a->attrs;
+        $attrsB = $b->attrs;
+        ksort($attrsA);
+        ksort($attrsB);
+        if ($attrsA !== $attrsB) return false;
+        // Compare children recursively
+        if (count($a->children) !== count($b->children)) return false;
+        foreach ($a->children as $i => $childA) {
+            if (!self::nodesEqual($childA, $b->children[$i])) return false;
+        }
+        return true;
     }
 }

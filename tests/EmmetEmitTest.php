@@ -33,4 +33,13 @@ final class EmmetEmitTest extends TestCase {
             ->withChild(new Node('p'));
         $this->assertSame('div>h1{Hi}+p', TransformEngine::emmetEmit($n));
     }
+    public function testB8RepetitionCollapse(): void {
+        $li = new Node('li');
+        $n = (new Node('_root'))->withChild($li)->withChild($li)->withChild($li);
+        $this->assertSame('li*3', TransformEngine::emmetEmit($n));
+    }
+    public function testB9NoCollapseWhenSubtreesDiffer(): void {
+        $n = (new Node('_root'))->withChild(new Node('a'))->withChild(new Node('b'));
+        $this->assertSame('a+b', TransformEngine::emmetEmit($n));
+    }
 }
