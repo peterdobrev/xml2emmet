@@ -10,6 +10,28 @@ final class TransformEngine {
         return (new XmlParser($src, $mode))->parse();
     }
 
+    public static function xmlEmit(Node $n, string $mode = 'xml'): string {
+        $attrs = self::emitAttrs($n->attrs);
+        $open  = '<' . $n->tag . $attrs;
+        if ($n->text === null && $n->children === []) {
+            return $open . '/>';
+        }
+        $body = $n->text !== null
+            ? htmlspecialchars($n->text, ENT_XML1 | ENT_NOQUOTES, 'UTF-8')
+            : '';
+        return $open . '>' . $body . '</' . $n->tag . '>';
+    }
+
+    /** @param array<string,string> $attrs */
+    private static function emitAttrs(array $attrs): string {
+        if ($attrs === []) return '';
+        $pairs = [];
+        foreach ($attrs as $k => $v) {
+            $pairs[] = $k . '="' . htmlspecialchars($v, ENT_XML1 | ENT_COMPAT, 'UTF-8') . '"';
+        }
+        return ' ' . implode(' ', $pairs);
+    }
+
     public static function emmetEmit(Node $n, string $mode = 'html'): string {
         return self::emitNode($n, $mode, false);
     }
