@@ -73,6 +73,10 @@ final class TransformEngine {
         return RulesEngine::apply($root, $rules);
     }
 
+    public static function applyClickOp(Node $root, array $op): Node {
+        return ClickOps::apply($root, $op);
+    }
+
     public static function emmetEmit(Node $n, string $mode = 'html'): string {
         return self::emitNode($n, $mode, false);
     }
