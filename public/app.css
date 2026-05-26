@@ -236,6 +236,7 @@ h2 {
 .transform-grid {
   display: grid;
   grid-template-columns: 1fr auto 1fr auto 1fr;
+  grid-template-rows: 1fr;
   gap: 0;
   flex: 1;
   min-height: 0;
@@ -248,16 +249,21 @@ h2 {
   padding: 10px;
   gap: 8px;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .transform-col textarea {
   flex: 1;
   width: 100%;
   resize: none;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .transform-tree {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   font-size: 12px;
   white-space: pre;
