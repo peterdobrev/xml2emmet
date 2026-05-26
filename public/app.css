@@ -348,6 +348,22 @@ h2 {
   flex-wrap: wrap;
 }
 
+.expand-btn {
+  margin-left: auto;
+  font-size: 14px;
+  padding: 2px 6px;
+  border-color: var(--border-dim);
+  color: var(--text-muted);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.expand-btn:hover { border-color: var(--border); color: var(--text); background: var(--surface); }
+
+/* Expanded column fills the grid */
+.transform-grid.has-expanded .transform-col,
+.transform-grid.has-expanded .transform-controls { display: none; }
+.transform-grid.has-expanded .transform-col.expanded { display: flex; grid-column: 1 / -1; }
+
 .tree-checkboxes {
   display: flex;
   gap: 12px;

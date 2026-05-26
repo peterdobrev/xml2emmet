@@ -12,6 +12,7 @@ export function render(container, { api }) {
             <button data-mode="html" class="active">[HTML]</button>
             <button data-mode="xml">[XML]</button>
           </div>
+          <button class="expand-btn" data-col="xml">⤢</button>
         </div>
         <textarea id="xml-input" placeholder="Paste XML or HTML here..."></textarea>
         <div class="error-msg" id="xml-error"></div>
@@ -28,7 +29,10 @@ export function render(container, { api }) {
       </div>
 
       <div class="transform-col">
-        <label>Emmet</label>
+        <div class="transform-col-header">
+          <label>Emmet</label>
+          <button class="expand-btn" data-col="emmet">⤢</button>
+        </div>
         <textarea id="emmet-input" placeholder="Paste Emmet here..."></textarea>
         <div class="error-msg" id="emmet-error"></div>
       </div>
@@ -43,6 +47,7 @@ export function render(container, { api }) {
             <label><input type="checkbox" id="show-text" checked> text</label>
             <label><input type="checkbox" id="show-attrs" checked> attrs</label>
           </div>
+          <button class="expand-btn" data-col="tree">⤢</button>
         </div>
         <div class="transform-tree" id="tree-output"></div>
       </div>
@@ -149,6 +154,27 @@ export function render(container, { api }) {
   }
 
   loadRules();
+
+  container.querySelectorAll('.expand-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const col = btn.closest('.transform-col');
+      const grid = container.querySelector('.transform-grid');
+      const isExpanded = col.classList.contains('expanded');
+      if (isExpanded) {
+        col.classList.remove('expanded');
+        grid.classList.remove('has-expanded');
+        btn.textContent = '⤢';
+      } else {
+        container.querySelectorAll('.transform-col.expanded').forEach(c => {
+          c.classList.remove('expanded');
+          c.querySelector('.expand-btn').textContent = '⤢';
+        });
+        col.classList.add('expanded');
+        grid.classList.add('has-expanded');
+        btn.textContent = '⤡';
+      }
+    });
+  });
 }
 
 function escHtml(str) {
