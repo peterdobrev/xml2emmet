@@ -325,12 +325,14 @@ h2 {
 .transform-stats-bar {
   display: flex;
   gap: 20px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   padding: 10px 0;
   border-top: 1px solid var(--border-dim);
   font-size: 12px;
   color: var(--text-muted);
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .transform-stats-bar .stats-key {
