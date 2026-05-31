@@ -1,0 +1,44 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: xml2emmet-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+      MYSQL_DATABASE: xml2emmet_test
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psecret"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    image: php:8.2-cli
+    container_name: xml2emmet-app
+    working_dir: /app
+    command: >
+      sh -c "
+        docker-php-ext-install pdo pdo_mysql &&
+        php bin/migrate.php &&
+        php -S 0.0.0.0:8080 -t public
+      "
+    environment:
+      XML2EMMET_DB_HOST: mysql
+      XML2EMMET_DB_PORT: 3306
+      XML2EMMET_DB_USER: root
+      XML2EMMET_DB_PASS: secret
+      XML2EMMET_DB_NAME: xml2emmet_test
+      XML2EMMET_DEBUG: "1"
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  mysql_data:
