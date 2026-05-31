@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 
 final class RulesEngine {
@@ -14,6 +15,11 @@ final class RulesEngine {
      * @param Rule[] $rules
      */
     public static function apply(Node $root, array $rules): Node {
+        $ids = array_map(fn(Rule $r) => $r->id, $rules);
+        if (count($ids) !== count(array_unique($ids))) {
+            $dupes = array_keys(array_filter(array_count_values($ids), fn($c) => $c > 1));
+            throw new \InvalidArgumentException('Duplicate rule IDs: ' . implode(', ', $dupes));
+        }
         foreach ($rules as $rule) {
             $root = self::walk($root, $rule);
         }

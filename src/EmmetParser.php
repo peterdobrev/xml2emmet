@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 use App\EmmetParseError;
 final class EmmetParser {
@@ -179,6 +180,9 @@ final class EmmetParser {
             throw new EmmetParseError(
                 "`*N` requires N >= 1, got {$n} at position {$numStart}"
             );
+        }
+        if ($n > 1000) {
+            throw new EmmetParseError('Repetition count ' . $n . ' exceeds maximum of 1000');
         }
 
         // A `_root` operand from a multi-sibling group is expanded flat so that

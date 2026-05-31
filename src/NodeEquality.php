@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 
 /**
@@ -8,13 +9,15 @@ namespace App;
  * are compared in order. Text and tag must match exactly.
  */
 final class NodeEquality {
+    private function __construct() {}
+
     public static function equals(Node $a, Node $b): bool {
         if ($a->tag !== $b->tag) return false;
         if ($a->text !== $b->text) return false;
         $attrsA = $a->attrs;
         $attrsB = $b->attrs;
-        ksort($attrsA);
-        ksort($attrsB);
+        ksort($attrsA, SORT_STRING);
+        ksort($attrsB, SORT_STRING);
         if ($attrsA !== $attrsB) return false;
         if (count($a->children) !== count($b->children)) return false;
         foreach ($a->children as $i => $childA) {

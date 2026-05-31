@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 final class Node {
     /** @param array<string,string> $attrs @param Node[] $children @param string[] $appliedRules */

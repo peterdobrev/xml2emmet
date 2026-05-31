@@ -3,6 +3,8 @@ declare(strict_types=1);
 namespace App;
 
 final class Stats {
+    private function __construct() {}
+
     /**
      * @return array{nodeCount:int, depth:int, tagHistogram:array<string,int>, attrCount:int, textLength:int, classCounts:array<string,int>, depthHistogram:array<int,int>}
      */

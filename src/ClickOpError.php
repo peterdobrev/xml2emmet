@@ -12,6 +12,10 @@ final class ClickOpError extends \RuntimeException {
         throw new \Error("Undefined property: " . self::class . "::\$$name");
     }
 
+    public function __isset(string $name): bool {
+        return $name === 'code';
+    }
+
     public function __construct(
         string $code,
         string $message,
