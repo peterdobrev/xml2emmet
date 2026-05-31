@@ -2,3 +2,4 @@ docs/superpowers/brainstorm/
 .superpowers/
 /vendor/
 /.phpunit.cache/
+.worktrees
