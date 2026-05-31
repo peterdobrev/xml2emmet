@@ -1,5 +1,7 @@
-docs/superpowers/brainstorm/
+docs/superpowers/
 .superpowers/
+.playwright-mcp/
+scratch/
 /vendor/
 /.phpunit.cache/
 .worktrees
