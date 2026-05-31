@@ -104,12 +104,8 @@ final class TransformEngine {
             return $needsParensIfSiblings ? '(' . $chain . ')' : $chain;
         }
 
-        // #text synthetic node: emit only the text content (no tag)
+        // #text synthetic node: Emmet has no standalone text-node syntax — skip it.
         if ($n->tag === '#text') {
-            if ($n->text !== null) {
-                $safeText = str_replace(['\\', '}', '$'], ['\\\\', '\\}', '\\$'], $n->text);
-                return '{' . $safeText . '}';
-            }
             return '';
         }
 
@@ -166,6 +162,10 @@ final class TransformEngine {
 
     /** @param Node[] $children */
     private static function emitChildren(array $children, string $mode): string {
+        // Strip #text synthetic nodes — Emmet has no inline text-sibling syntax.
+        $children = array_values(array_filter($children, fn(Node $c) => $c->tag !== '#text'));
+        if ($children === []) return '';
+
         // Build run-length encoded list: [[Node, int], ...]
         $runs = [];
         foreach ($children as $child) {
