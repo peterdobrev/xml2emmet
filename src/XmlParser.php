@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 
 /**
@@ -17,6 +18,9 @@ final class XmlParser {
         private readonly string $src,
         private readonly string $mode = 'xml',
     ) {
+        if (!in_array($this->mode, ['xml', 'html'], true)) {
+            throw new \InvalidArgumentException("Unknown parse mode '{$this->mode}'; expected 'xml' or 'html'");
+        }
         $this->len = strlen($src);
     }
 
@@ -136,9 +140,13 @@ final class XmlParser {
     private function parseAttribute(): array {
         $name = $this->parseName();
         $this->skipWhitespace();
-        $this->expect('=');
-        $this->skipWhitespace();
-        $value = $this->parseAttributeValue();
+        if ($this->pos < $this->len && $this->src[$this->pos] === '=') {
+            $this->pos++; // consume '='
+            $this->skipWhitespace();
+            $value = $this->parseAttributeValue();
+        } else {
+            $value = ''; // boolean/valueless attribute
+        }
         return [$name, $value];
     }
 
@@ -239,7 +247,19 @@ final class XmlParser {
     // ── Entity decoding ───────────────────────────────────────────────────────
 
     private function decodeEntities(string $raw): string {
-        return strtr($raw, [
+        // Decode numeric character references first
+        $decoded = preg_replace_callback(
+            '/&#([0-9]+);|&#x([0-9a-fA-F]+);/i',
+            static function (array $m): string {
+                $cp = isset($m[2]) && $m[2] !== '' ? hexdec($m[2]) : (int)$m[1];
+                if ($cp === 0) return '';
+                $result = mb_chr($cp, 'UTF-8');
+                return $result !== false ? $result : '';
+            },
+            $raw
+        );
+        // Then handle named entities
+        return strtr($decoded, [
             '&amp;'  => '&',
             '&lt;'   => '<',
             '&gt;'   => '>',

@@ -1,6 +1,8 @@
 <?php
+declare(strict_types=1);
 namespace App;
 final class TransformEngine {
+    private function __construct() {}
     public static function emmetParse(string $abbr): Node {
         $p = new EmmetParser($abbr);
         return $p->parse();
@@ -15,6 +17,15 @@ final class TransformEngine {
     }
 
     private static function xmlEmitNode(Node $n, string $mode): string {
+        // _root synthetic container: emit children only — no element tags.
+        if ($n->tag === '_root') {
+            $out = '';
+            foreach ($n->children as $child) {
+                $out .= self::xmlEmitNode($child, $mode);
+            }
+            return $out;
+        }
+
         // #text synthetic node: emit escaped text only — no element tags.
         if ($n->tag === '#text') {
             return htmlspecialchars($n->text ?? '', ENT_XML1 | ENT_NOQUOTES, 'UTF-8');
@@ -93,6 +104,15 @@ final class TransformEngine {
             return $needsParensIfSiblings ? '(' . $chain . ')' : $chain;
         }
 
+        // #text synthetic node: emit only the text content (no tag)
+        if ($n->tag === '#text') {
+            if ($n->text !== null) {
+                $safeText = str_replace(['\\', '}', '$'], ['\\\\', '\\}', '\\$'], $n->text);
+                return '{' . $safeText . '}';
+            }
+            return '';
+        }
+
         // Emit tag decorators (id, classes, extra attrs, text)
         $out = $n->tag;
         if ($mode === 'xml') {
@@ -101,7 +121,7 @@ final class TransformEngine {
             if ($n->attrs !== []) {
                 $pairs = [];
                 foreach ($n->attrs as $k => $v) {
-                    $pairs[] = $k . '="' . $v . '"';
+                    $pairs[] = $k . '="' . str_replace(['"', '\\'], ['\\"', '\\\\'], $v) . '"';
                 }
                 $out .= '[' . implode(' ', $pairs) . ']';
             }
@@ -126,13 +146,14 @@ final class TransformEngine {
             if ($extras !== []) {
                 $pairs = [];
                 foreach ($extras as $k => $v) {
-                    $pairs[] = $k . '="' . $v . '"';
+                    $pairs[] = $k . '="' . str_replace(['"', '\\'], ['\\"', '\\\\'], $v) . '"';
                 }
                 $out .= '[' . implode(' ', $pairs) . ']';
             }
         }
         if ($n->text !== null) {
-            $out .= '{' . $n->text . '}';
+            $safeText = str_replace(['\\', '}', '$'], ['\\\\', '\\}', '\\$'], $n->text);
+            $out .= '{' . $safeText . '}';
         }
 
         // Recurse into children
@@ -157,10 +178,16 @@ final class TransformEngine {
 
         $multipleRuns = count($runs) > 1;
         $parts = [];
-        foreach ($runs as [$child, $runLen]) {
+        $lastIdx = count($runs) - 1;
+        foreach ($runs as $idx => [$child, $runLen]) {
             // A _root sub-group among siblings needs parens to avoid ambiguity
             $needsParens = $child->tag === '_root' && $multipleRuns;
             $subtree = self::emitNode($child, $mode, $needsParens);
+            // Wrap in parens if there are multiple runs, the subtree is NOT the last,
+            // and it contains '>' — otherwise the '>' would "steal" subsequent siblings.
+            if ($multipleRuns && $idx < $lastIdx && str_contains($subtree, '>')) {
+                $subtree = '(' . $subtree . ')';
+            }
             if ($runLen > 1) {
                 // Wrap in parens if the subtree is complex (has children → contains '>')
                 if ($child->children !== []) {

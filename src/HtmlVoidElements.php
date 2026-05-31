@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 
 /**
@@ -6,6 +7,8 @@ namespace App;
  * even without a `/`) and the emitter (omit the closing tag).
  */
 final class HtmlVoidElements {
+    private function __construct() {}
+
     /** @var string[] */
     public const TAGS = [
         'area', 'base', 'br', 'col', 'embed', 'hr', 'img',

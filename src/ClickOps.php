@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 namespace App;
 
 final class ClickOps {
@@ -47,8 +48,8 @@ final class ClickOps {
     }
 
     private static function rename(Node $root, array $path, array $op): Node {
-        if (!isset($op['with']) || $op['with'] === '') {
-            throw new ClickOpError('missing_with', "rename requires a non-empty 'with' tag");
+        if (!isset($op['with']) || !is_string($op['with']) || $op['with'] === '') {
+            throw new ClickOpError('missing_with', "rename requires a non-empty string 'with' tag");
         }
         $node = self::getAt($root, $path);
         $newNode = new Node($op['with'], $node->attrs, $node->children, $node->text, $node->appliedRules);
@@ -63,8 +64,8 @@ final class ClickOps {
     }
 
     private static function wrap(Node $root, array $path, array $op): Node {
-        if (!isset($op['with']) || $op['with'] === '') {
-            throw new ClickOpError('missing_with', "wrap requires a non-empty 'with' tag");
+        if (!isset($op['with']) || !is_string($op['with']) || $op['with'] === '') {
+            throw new ClickOpError('missing_with', "wrap requires a non-empty string 'with' tag");
         }
         $node = self::getAt($root, $path);
         $wrapper = new Node($op['with'], [], [$node]);
@@ -291,11 +292,11 @@ final class ClickOps {
         return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
     }
 
-    /** Validate that path is an array of integers (values checked during navigation). */
+    /** Validate that path is an array of non-negative integers (values checked during navigation). */
     private static function validatePath(array $path): void {
         foreach ($path as $i => $idx) {
-            if (!is_int($idx)) {
-                throw new ClickOpError('bad_path', "Path element at position $i must be an integer");
+            if (!is_int($idx) || $idx < 0) {
+                throw new ClickOpError('bad_path', 'Path element at position ' . $i . ' must be a non-negative integer');
             }
         }
     }
