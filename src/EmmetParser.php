@@ -31,11 +31,7 @@ final class EmmetParser {
         if (count($siblings) === 1) {
             return $siblings[0];
         }
-        $root = new Node('_root');
-        foreach ($siblings as $sibling) {
-            $root = $root->withChild($sibling);
-        }
-        return $root;
+        return (new Node('_root'))->withChildren($siblings);
     }
 
     /**
@@ -115,10 +111,7 @@ final class EmmetParser {
                     }
                     // Attach the current child list to the parent node
                     $children = array_pop($stack);
-                    $parentNode = array_pop($parents);
-                    foreach ($children as $child) {
-                        $parentNode = $parentNode->withChild($child);
-                    }
+                    $parentNode = array_pop($parents)->withChildren($children);
                     // Replace the last element of the now-current level with
                     // the updated parent (the one that now has its children).
                     $top = count($stack) - 1;
@@ -143,10 +136,7 @@ final class EmmetParser {
         // Unwind any remaining open levels (e.g. a plain `div>span` with no `^`)
         while (count($stack) > 1) {
             $children = array_pop($stack);
-            $parentNode = array_pop($parents);
-            foreach ($children as $child) {
-                $parentNode = $parentNode->withChild($child);
-            }
+            $parentNode = array_pop($parents)->withChildren($children);
             $top = count($stack) - 1;
             $stack[$top][count($stack[$top]) - 1] = $parentNode;
         }
@@ -257,24 +247,23 @@ final class EmmetParser {
             }
         }
 
-        $node = new Node($tag);
-
+        // Build the node in one shot — accumulate attrs in canonical order
+        // (id, class, [k=v]…) then construct so we don't pay an O(n) attr-map
+        // copy per qualifier.
+        $finalAttrs = [];
         if ($id !== null) {
-            $node = $node->withAttr('id', $id);
+            $finalAttrs['id'] = $id;
         }
         if ($classes !== []) {
-            $node = $node->withAttr('class', implode(' ', $classes));
+            $finalAttrs['class'] = implode(' ', $classes);
         }
         foreach ($attrsList as $map) {
             foreach ($map as $k => $v) {
-                $node = $node->withAttr($k, $v);
+                $finalAttrs[$k] = $v;
             }
         }
-        if ($text !== null) {
-            $node = $node->withText($text);
-        }
 
-        return $node;
+        return new Node($tag, $finalAttrs, [], $text);
     }
 
     // ── low-level helpers ────────────────────────────────────────────────────
