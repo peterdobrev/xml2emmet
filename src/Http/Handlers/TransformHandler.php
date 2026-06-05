@@ -55,13 +55,15 @@ final class TransformHandler {
 
         // 2. Apply rules in order; reject foreign rule ids
         if ($ruleIds !== []) {
-            $unowned = $this->rules->findUnownedIds($userId, $ruleIds);
+            $intIds = array_map('intval', $ruleIds);
+            $byId   = $this->rules->findManyOwned($userId, $intIds);
+            $unowned = array_values(array_diff($intIds, array_keys($byId)));
             if ($unowned !== []) {
                 return Response::notFound('Unknown rule id.', ['rule_ids' => $unowned]);
             }
             $ruleObjs = [];
-            foreach ($ruleIds as $rid) {
-                $row = $this->rules->findOwned($userId, (int)$rid);
+            foreach ($intIds as $rid) {
+                $row = $byId[$rid];
                 try {
                     $pat = TransformEngine::emmetParse($row['pattern_emmet']);
                     $rep = TransformEngine::emmetParse($row['replacement_emmet']);
