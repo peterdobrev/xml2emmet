@@ -1,0 +1,13 @@
+/.git
+/.idea
+/.vscode
+/.phpunit.cache
+/.playwright-mcp
+/.worktrees
+/.superpowers
+/.claude
+/scratch
+/tests
+/docs
+/.dockerignore
+docker-compose.yml
