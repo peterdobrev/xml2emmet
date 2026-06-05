@@ -57,29 +57,64 @@ export function render(container, { api }) {
     </div>
   `;
 
+  // Cache the references we touch on every event — saves ~12 of the 23
+  // querySelector lookups the panel used to do per-click.
+  const els = {
+    xmlInput:    container.querySelector('#xml-input'),
+    emmetInput:  container.querySelector('#emmet-input'),
+    treeOutput:  container.querySelector('#tree-output'),
+    xmlError:    container.querySelector('#xml-error'),
+    emmetError:  container.querySelector('#emmet-error'),
+    convertErr:  container.querySelector('#convert-error'),
+    rulesBox:    container.querySelector('#rules-checkboxes'),
+    showText:    container.querySelector('#show-text'),
+    showAttrs:   container.querySelector('#show-attrs'),
+    statsHost:   container.querySelector('#transform-stats'),
+  };
+
   let mode = 'html';
   let rules = [];
 
   async function loadRules() {
     const res = await api.rulesList();
     rules = res.ok ? res.data.items : [];
-    const box = container.querySelector('#rules-checkboxes');
-    box.innerHTML = '';
+    els.rulesBox.innerHTML = '';
     if (rules.length === 0) {
-      box.innerHTML = '<span class="no-rules">No rules saved.</span>';
+      els.rulesBox.innerHTML = '<span class="no-rules">No rules saved.</span>';
       return;
     }
     rules.forEach(r => {
       const lbl = document.createElement('label');
       lbl.className = 'rule-check-label';
       lbl.innerHTML = `<input type="checkbox" data-rule-id="${r.id}"> ${escHtml(r.name)}`;
-      box.appendChild(lbl);
+      els.rulesBox.appendChild(lbl);
     });
   }
 
   function selectedRuleIds() {
-    return [...container.querySelectorAll('#rules-checkboxes input:checked')]
+    return [...els.rulesBox.querySelectorAll('input:checked')]
       .map(el => parseInt(el.dataset.ruleId, 10));
+  }
+
+  /**
+   * Run a transform in either direction, render the result, and surface errors
+   * to the appropriate inline element. Both arrow buttons funnel through this.
+   * `bodyBuilder` is invoked at click time so settings/rule selections are
+   * read from the live DOM state, not captured at handler-attach time.
+   */
+  async function runConversion({ direction, fromEl, toEl, fieldErrEl, bodyBuilder, statsSource }) {
+    clearErrors(container);
+    const input = fromEl.value;
+    const res = await api.transform({ direction, input, ...bodyBuilder() });
+    if (res.ok) {
+      toEl.value = res.data.output;
+      renderTree(els.treeOutput, res.data.tree);
+      showStats(typeof statsSource === 'function' ? statsSource(res) : statsSource);
+    } else if (res.code === 'parse_error') {
+      fieldErrEl.textContent = res.message;
+    } else {
+      els.convertErr.textContent = res.message;
+    }
   }
 
   container.querySelectorAll('#mode-toggle button').forEach(btn => {
@@ -89,55 +124,36 @@ export function render(container, { api }) {
     });
   });
 
-  container.querySelector('#btn-to-emmet').addEventListener('click', async () => {
-    clearErrors(container);
-    const input = container.querySelector('#xml-input').value;
-    const showText  = container.querySelector('#show-text').checked;
-    const showAttrs = container.querySelector('#show-attrs').checked;
-    const rule_ids  = selectedRuleIds();
-    const res = await api.transform({
-      direction: 'xml2emmet',
-      input,
-      settings: { mode, show_text: showText, show_attrs: showAttrs },
-      ...(rule_ids.length ? { rule_ids } : {}),
-    });
-    if (res.ok) {
-      container.querySelector('#emmet-input').value = res.data.output;
-      renderTree(container.querySelector('#tree-output'), res.data.tree);
-      showStats(input);
-    } else if (res.code === 'parse_error') {
-      container.querySelector('#xml-error').textContent = res.message;
-    } else {
-      container.querySelector('#convert-error').textContent = res.message;
-    }
-  });
+  container.querySelector('#btn-to-emmet').addEventListener('click', () => runConversion({
+    direction:  'xml2emmet',
+    fromEl:     els.xmlInput,
+    toEl:       els.emmetInput,
+    fieldErrEl: els.xmlError,
+    bodyBuilder: () => {
+      const rule_ids = selectedRuleIds();
+      return {
+        settings: { mode, show_text: els.showText.checked, show_attrs: els.showAttrs.checked },
+        ...(rule_ids.length ? { rule_ids } : {}),
+      };
+    },
+    statsSource: () => els.xmlInput.value,
+  }));
 
-  container.querySelector('#btn-to-xml').addEventListener('click', async () => {
-    clearErrors(container);
-    const input = container.querySelector('#emmet-input').value;
-    const res = await api.transform({
-      direction: 'emmet2xml',
-      input,
-      settings: { mode },
-    });
-    if (res.ok) {
-      container.querySelector('#xml-input').value = res.data.output;
-      renderTree(container.querySelector('#tree-output'), res.data.tree);
-      showStats(res.data.output);
-    } else if (res.code === 'parse_error') {
-      container.querySelector('#emmet-error').textContent = res.message;
-    } else {
-      container.querySelector('#convert-error').textContent = res.message;
-    }
-  });
+  container.querySelector('#btn-to-xml').addEventListener('click', () => runConversion({
+    direction:  'emmet2xml',
+    fromEl:     els.emmetInput,
+    toEl:       els.xmlInput,
+    fieldErrEl: els.emmetError,
+    bodyBuilder: () => ({ settings: { mode } }),
+    statsSource: (res) => res.data.output,
+  }));
 
   async function showStats(htmlInput) {
-    const el = container.querySelector('#transform-stats');
     const res = await api.stats('html', htmlInput);
-    if (!res.ok) { el.innerHTML = ''; return; }
+    if (!res.ok) { els.statsHost.innerHTML = ''; return; }
     const d = res.data;
     const classes = d.top_classes.slice(0, 5).map(c => escHtml(c.name)).join(', ');
-    el.innerHTML = `
+    els.statsHost.innerHTML = `
       <div class="transform-stats-bar">
         <span><span class="stats-key">elements</span> ${d.elements}</span>
         <span><span class="stats-key">tags</span> ${d.distinct_tags}</span>
@@ -148,8 +164,15 @@ export function render(container, { api }) {
     `;
   }
 
+  setupExpandToggle(container);
   loadRules();
+}
 
+/**
+ * Wire the per-column expand/collapse buttons. One column at a time can be
+ * expanded; clicking the button on an already-expanded column collapses it.
+ */
+function setupExpandToggle(container) {
   container.querySelectorAll('.expand-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const col = btn.closest('.transform-col');
