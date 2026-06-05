@@ -3,8 +3,15 @@ declare(strict_types=1);
 namespace App;
 
 final class RulesEngine {
-    /** Regex that identifies a node tag as a placeholder (e.g. E1, E2, E12). */
-    private const PLACEHOLDER_RE = '/^E\d+$/';
+    /**
+     * Decide whether a node tag is a placeholder (e.g. `E1`, `E2`, `E12`).
+     *
+     * Cheaper than `preg_match('/^E\d+$/', $tag)`: avoids regex compilation
+     * on the hottest path of the rules engine. Equivalent semantics.
+     */
+    private static function isPlaceholder(string $tag): bool {
+        return strlen($tag) >= 2 && $tag[0] === 'E' && ctype_digit(substr($tag, 1));
+    }
 
     /**
      * Apply an array of rules to a tree in order, returning a new tree.
@@ -75,7 +82,7 @@ final class RulesEngine {
      * @return array<string,Node>|null  null on no match, otherwise the placeholder bindings.
      */
     private static function matchNode(Node $pattern, Node $candidate, array $bindings = []): ?array {
-        if (preg_match(self::PLACEHOLDER_RE, $pattern->tag)) {
+        if (self::isPlaceholder($pattern->tag)) {
             $name = $pattern->tag;
             if (isset($bindings[$name])) {
                 // Same placeholder seen again — candidate must equal prior binding.
@@ -114,7 +121,7 @@ final class RulesEngine {
      * @throws RuleError  If the replacement references an unbound placeholder.
      */
     private static function substitute(Node $template, array $bindings): Node {
-        if (preg_match(self::PLACEHOLDER_RE, $template->tag)) {
+        if (self::isPlaceholder($template->tag)) {
             $name = $template->tag;
             if (!isset($bindings[$name])) {
                 throw new RuleError(
