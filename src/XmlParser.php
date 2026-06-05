@@ -61,7 +61,7 @@ final class XmlParser {
         if ($this->peek() === '/') {
             $this->pos++; // consume '/'
             $this->expect('>');
-            return $this->buildNode($tag, $attrs, []);
+            return new Node($tag, $attrs, []);
         }
 
         // Opening tag end: `<tag ...>`
@@ -69,7 +69,7 @@ final class XmlParser {
 
         // HTML mode: void elements are implicitly self-closing — no children, no close tag.
         if ($this->isVoidElement($tag)) {
-            return $this->buildNode($tag, $attrs, []);
+            return new Node($tag, $attrs, []);
         }
 
         // Child loop: alternate text runs and child elements until `</`
@@ -118,7 +118,7 @@ final class XmlParser {
 
         if ($textCount === 1 && $nodeCount === 0) {
             // Pure text content
-            $node = $this->buildNode($tag, $attrs, []);
+            $node = new Node($tag, $attrs, []);
             return $node->withText($fragments[0][1]);
         }
 
@@ -131,7 +131,7 @@ final class XmlParser {
                 $children[] = (new Node('#text'))->withText($value);
             }
         }
-        return $this->buildNode($tag, $attrs, $children);
+        return new Node($tag, $attrs, $children);
     }
 
     // ── Attribute parsing ─────────────────────────────────────────────────────
@@ -266,16 +266,5 @@ final class XmlParser {
             '&quot;' => '"',
             '&apos;' => "'",
         ]);
-    }
-
-    // ── Node construction ─────────────────────────────────────────────────────
-
-    /**
-     * @param array<string,string> $attrs
-     * @param Node[] $children
-     */
-    private function buildNode(string $tag, array $attrs, array $children): Node {
-        $node = new Node($tag, $attrs, $children);
-        return $node;
     }
 }

@@ -13,7 +13,6 @@ const panelEl    = document.getElementById('panel-root');
 
 let currentUser = null;
 let currentPanelTeardown = null;
-let currentPanelId = 'transform';
 
 const panelRenderers = {
   transform: renderTransform,
@@ -22,10 +21,9 @@ const panelRenderers = {
   stats:     renderStats,
 };
 
-export function showPanel(name) {
+function showPanel(name) {
   if (currentPanelTeardown) { currentPanelTeardown(); currentPanelTeardown = null; }
   panelEl.innerHTML = '';
-  currentPanelId = name;
   setSidebarActive(sidebarEl, name);
   const result = panelRenderers[name](panelEl, { user: currentUser, api });
   if (result && typeof result.teardown === 'function') currentPanelTeardown = result.teardown;

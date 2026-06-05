@@ -49,7 +49,7 @@ export function render(container, { api }) {
 
   function toggleExpand(tbody, item, tr) {
     const existing = tbody.querySelector('.history-detail-row');
-    if (existing && existing.dataset.forId == item.id) {
+    if (existing && existing.dataset.forId === String(item.id)) {
       existing.remove();
       expandedId = null;
       return;

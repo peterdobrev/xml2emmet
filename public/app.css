@@ -404,7 +404,6 @@ h2 {
 }
 
 /* History panel */
-.history-expanded td { background: #050f05; }
 .history-detail { padding: 12px 10px; border-bottom: 1px solid var(--border-dim); }
 .history-detail pre { margin-top: 6px; }
 .history-detail .detail-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }

@@ -43,7 +43,7 @@ export function render(container, { api }) {
 
     tbody.querySelectorAll('.edit-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        const item = items.find(i => i.id == btn.dataset.id);
+        const item = items.find(i => i.id === Number(btn.dataset.id));
         if (!item) return;
         editingId = item.id;
         setForm(item.name, item.pattern_emmet, item.replacement_emmet);
@@ -53,7 +53,7 @@ export function render(container, { api }) {
     tbody.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         await api.rulesDelete(btn.dataset.id);
-        if (editingId == btn.dataset.id) { editingId = null; setForm('', '', ''); }
+        if (editingId === Number(btn.dataset.id)) { editingId = null; setForm('', '', ''); }
         load();
       });
     });

@@ -223,7 +223,7 @@ final class EmmetParser {
         return new Node($node->tag, $newAttrs, $newChildren, $newText, $node->appliedRules);
     }
 
-    public function parseElement(): Node {
+    private function parseElement(): Node {
         $tag = $this->consumeIdent();
         if ($tag === '') {
             throw new EmmetParseError(
@@ -280,17 +280,17 @@ final class EmmetParser {
     // ── low-level helpers ────────────────────────────────────────────────────
 
     /** Return the character at the current position without advancing. */
-    public function peek(): string {
+    private function peek(): string {
         return $this->pos < $this->len ? $this->input[$this->pos] : '';
     }
 
     /** Advance by one and return the consumed character. */
-    public function consume(): string {
+    private function consume(): string {
         return $this->pos < $this->len ? $this->input[$this->pos++] : '';
     }
 
     /** Advance if the current character equals $char; return whether it matched. */
-    public function consumeIf(string $char): bool {
+    private function consumeIf(string $char): bool {
         if ($this->peek() === $char) {
             $this->pos++;
             return true;
@@ -299,7 +299,7 @@ final class EmmetParser {
     }
 
     /** Consume [A-Za-z][A-Za-z0-9_-]* and return the matched string (may be empty). */
-    public function consumeIdent(): string {
+    private function consumeIdent(): string {
         if ($this->pos >= $this->len) {
             return '';
         }
