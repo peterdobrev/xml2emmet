@@ -3,16 +3,6 @@ declare(strict_types=1);
 namespace App\Tests\Http;
 
 final class HistoryHttpTest extends HttpTestCase {
-    private function saveTransform(int $i): int {
-        [, , $b] = $this->post('/api/transform', [
-            'direction' => 'xml2emmet',
-            'input'     => "<x>$i</x>",
-            'settings'  => ['mode' => 'xml', 'show_text' => true, 'show_attrs' => true, 'show_attr_values' => true],
-            'rule_ids'  => [], 'click_ops' => [], 'save' => true,
-        ]);
-        return (int)$b['saved_id'];
-    }
-
     public function testPaginationAndOrdering(): void {
         $this->registerAndLogin();
         $ids = [];

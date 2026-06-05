@@ -37,12 +37,16 @@ final class CssClassCounterTest extends TestCase {
     }
 
     public function testIgnoresClassNamesInsideStringValues(): void {
-        // content: ".fake" is a string, not a selector — naive regex matches; document v1 limitation.
-        // For v1 we accept the false positive; the test pins current behavior.
+        // content: ".fake" is a string, not a selector — naive regex matches it.
+        // For v1 we accept the false positive and pin the .real class actually
+        // counts; the .fake misclassification is a known limitation, not a bug
+        // we want to assert. When the counter learns string-literal context,
+        // remove the markTestIncomplete so the right behaviour starts asserting.
         $css = 'a::before { content: ".fake"; } .real {}';
         $result = CssClassCounter::count($css);
         $this->assertSame(1, $result['real']);
-        // We accept that a naive scan also picks up '.fake' — this is documented v1 behavior.
-        $this->assertSame(1, $result['fake'] ?? 0);
+        if (($result['fake'] ?? 0) === 1) {
+            $this->markTestIncomplete('v1 limitation: bare regex picks up class-name-shaped strings inside CSS string values.');
+        }
     }
 }

@@ -113,4 +113,44 @@ abstract class HttpTestCase extends DbTestCase {
         $this->assertSame(200, $status, "register failed: " . json_encode($body));
         return (int)$body['user']['id'];
     }
+
+    /**
+     * Default transform settings — the most common shape used across HTTP tests.
+     * Override individual keys via the array spread idiom: `defaultSettings(...) + ['mode' => 'html']`
+     * does NOT work (numeric+string keys); use `[...defaultSettings(), 'mode' => 'html']` instead.
+     */
+    protected function defaultSettings(string $mode = 'xml'): array {
+        return ['mode' => $mode, 'show_text' => true, 'show_attrs' => true, 'show_attr_values' => true];
+    }
+
+    /**
+     * Build a transform request body with sensible defaults; $overrides wins.
+     * Saves ~7 lines of repeated `'rule_ids' => [], 'click_ops' => [], 'save' => false` boilerplate
+     * across HTTP tests.
+     */
+    protected function transformPayload(array $overrides = []): array {
+        return [
+            'direction' => 'xml2emmet',
+            'input'     => '<div/>',
+            'settings'  => $this->defaultSettings('xml'),
+            'rule_ids'  => [],
+            'click_ops' => [],
+            'save'      => false,
+            ...$overrides,
+        ];
+    }
+
+    /**
+     * POST to /api/transform with save=true and return the new history row id.
+     * The varied $i is used as input content so callers can distinguish saved
+     * rows when listing them back. Caller must have called registerAndLogin().
+     */
+    protected function saveTransform(int $i = 0, array $overrides = []): int {
+        [, , $b] = $this->post('/api/transform', $this->transformPayload([
+            'input' => "<x>$i</x>",
+            'save'  => true,
+            ...$overrides,
+        ]));
+        return (int)$b['saved_id'];
+    }
 }
