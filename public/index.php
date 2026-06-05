@@ -6,6 +6,7 @@ use App\Db\Db;
 use App\Db\HistoryStore;
 use App\Db\RuleStore;
 use App\Db\UserStore;
+use App\Http\ErrorCodes;
 use App\Http\Handlers\AuthHandler;
 use App\Http\Handlers\HistoryHandler;
 use App\Http\Handlers\RulesHandler;
@@ -28,8 +29,8 @@ try {
     // Reject oversize bodies before any further work.
     $contentLength = (int)($_SERVER['CONTENT_LENGTH'] ?? 0);
     if ($contentLength > 2_000_000) {
-        $resp = Response::error(413, 'payload_too_large', 'Request body exceeds 2 MB.');
-        $resp = new Response($resp->status, $resp->headers + ['X-Request-Id' => $requestId], $resp->body);
+        $resp = Response::error(413, ErrorCodes::PAYLOAD_TOO_LARGE, 'Request body exceeds 2 MB.')
+            ->withHeader('X-Request-Id', $requestId);
         $resp->send();
         log_line($requestId, $start, $resp->status, 'payload_too_large');
         return;
@@ -73,14 +74,13 @@ try {
     // Stats
     $router->add('POST', '/api/stats', fn($r, $p, $u) => $stats->stats($r, $p, $u), gate: true);
 
-    $resp = $router->dispatch($req);
-    $resp = new Response($resp->status, $resp->headers + ['X-Request-Id' => $requestId], $resp->body);
+    $resp = $router->dispatch($req)->withHeader('X-Request-Id', $requestId);
     $resp->send();
     log_line($requestId, $start, $resp->status, $req->method . ' ' . $req->path);
 } catch (\Throwable $e) {
     $details = $cfg->debug ? ['trace' => $e->getTraceAsString()] : ['request_id' => $requestId];
-    $resp = Response::error(500, 'internal_error', $cfg->debug ? $e->getMessage() : 'Internal error.', $details);
-    $resp = new Response($resp->status, $resp->headers + ['X-Request-Id' => $requestId], $resp->body);
+    $resp = Response::error(500, ErrorCodes::INTERNAL_ERROR, $cfg->debug ? $e->getMessage() : 'Internal error.', $details)
+        ->withHeader('X-Request-Id', $requestId);
     $resp->send();
     error_log("[$requestId] uncaught: " . $e->getMessage() . "\n" . $e->getTraceAsString());
     log_line($requestId, $start, 500, 'internal_error: ' . $e->getMessage());

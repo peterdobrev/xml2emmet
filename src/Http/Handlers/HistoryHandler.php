@@ -20,7 +20,7 @@ final class HistoryHandler {
     public function detail(Request $req, array $params, int $userId): Response {
         $id  = (int)$params['id'];
         $row = $this->history->findOwned($userId, $id);
-        if ($row === null) return Response::error(404, 'not_found', 'History entry not found.');
+        if ($row === null) return Response::notFound('History entry not found.');
         return Response::json(200, $row);
     }
 }

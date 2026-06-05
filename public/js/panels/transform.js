@@ -1,4 +1,5 @@
 import { render as renderTree } from '../components/tree.js';
+import { escHtml, clearErrors } from '../util.js';
 
 export function render(container, { api }) {
   container.innerHTML = `
@@ -89,7 +90,7 @@ export function render(container, { api }) {
   });
 
   container.querySelector('#btn-to-emmet').addEventListener('click', async () => {
-    clearErrors();
+    clearErrors(container);
     const input = container.querySelector('#xml-input').value;
     const showText  = container.querySelector('#show-text').checked;
     const showAttrs = container.querySelector('#show-attrs').checked;
@@ -112,7 +113,7 @@ export function render(container, { api }) {
   });
 
   container.querySelector('#btn-to-xml').addEventListener('click', async () => {
-    clearErrors();
+    clearErrors(container);
     const input = container.querySelector('#emmet-input').value;
     const res = await api.transform({
       direction: 'emmet2xml',
@@ -147,12 +148,6 @@ export function render(container, { api }) {
     `;
   }
 
-  function clearErrors() {
-    ['#xml-error', '#emmet-error', '#convert-error'].forEach(sel => {
-      container.querySelector(sel).textContent = '';
-    });
-  }
-
   loadRules();
 
   container.querySelectorAll('.expand-btn').forEach(btn => {
@@ -175,8 +170,4 @@ export function render(container, { api }) {
       }
     });
   });
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

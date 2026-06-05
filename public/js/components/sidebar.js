@@ -5,6 +5,8 @@ const PANELS = [
   { id: 'stats',     label: '[STATS]'     },
 ];
 
+import { escHtml } from '../util.js';
+
 export function render(container, { user, activePanel, onNavigate, onLogout }) {
   container.innerHTML = `
     <div class="sidebar-header">XML2EMMET v1.0 <span class="cursor">▮</span></div>
@@ -28,8 +30,4 @@ export function setActive(container, panelId) {
   container.querySelectorAll('.sidebar-nav button').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.panel === panelId);
   });
-}
-
-function escHtml(str) {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

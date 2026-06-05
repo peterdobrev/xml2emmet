@@ -1,3 +1,5 @@
+import { escHtml } from '../util.js';
+
 export function render(container, { api }) {
   let page = 1;
   const perPage = 20;
@@ -73,8 +75,4 @@ export function render(container, { api }) {
   }
 
   load();
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

@@ -1,3 +1,5 @@
+import { escHtml, applyServerErrors, clearErrors } from '../util.js';
+
 export function render(container, { api }) {
   let editingId = null;
 
@@ -7,14 +9,7 @@ export function render(container, { api }) {
     container.querySelector('#rule-replacement').value = replacement;
     container.querySelector('#save-btn').textContent = editingId ? '[UPDATE]' : '[SAVE]';
     container.querySelector('#cancel-btn').style.display = editingId ? '' : 'none';
-    clearFormErrors();
-  }
-
-  function clearFormErrors() {
-    ['#name-error', '#pattern-error', '#replacement-error', '#form-error'].forEach(sel => {
-      const el = container.querySelector(sel);
-      if (el) el.textContent = '';
-    });
+    clearErrors(container);
   }
 
   async function load() {
@@ -91,7 +86,7 @@ export function render(container, { api }) {
   `;
 
   container.querySelector('#save-btn').addEventListener('click', async () => {
-    clearFormErrors();
+    clearErrors(container);
     const name        = container.querySelector('#rule-name').value.trim();
     const pattern     = container.querySelector('#rule-pattern').value.trim();
     const replacement = container.querySelector('#rule-replacement').value.trim();
@@ -104,15 +99,13 @@ export function render(container, { api }) {
       editingId = null;
       setForm('', '', '');
       load();
-    } else if (res.code === 'parse_error' && res.details?.field) {
-      container.querySelector(`#${res.details.field}-error`).textContent = res.message;
-    } else if (res.code === 'validation_failed') {
-      if (res.details?.name) container.querySelector('#name-error').textContent = res.details.name;
-      if (res.details?.pattern) container.querySelector('#pattern-error').textContent = res.details.pattern;
-      if (res.details?.replacement) container.querySelector('#replacement-error').textContent = res.details.replacement;
-    } else {
-      container.querySelector('#form-error').textContent = res.message;
+      return;
     }
+    applyServerErrors(container, res, {
+      name:        '#name-error',
+      pattern:     '#pattern-error',
+      replacement: '#replacement-error',
+    }, '#form-error');
   });
 
   container.querySelector('#cancel-btn').addEventListener('click', () => {
@@ -121,8 +114,4 @@ export function render(container, { api }) {
   });
 
   load();
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

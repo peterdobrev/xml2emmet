@@ -17,48 +17,52 @@ final class RulesHandler {
     }
 
     public function create(Request $req, array $params, int $userId): Response {
-        [$name, $pattern, $replacement, $err] = $this->validateBody($req->json ?? []);
-        if ($err !== null) return $err;
-        $id = $this->rules->create($userId, $name, $pattern, $replacement);
+        $input = $this->validateBody($req->json ?? []);
+        if ($input instanceof Response) return $input;
+        $id = $this->rules->create($userId, $input->name, $input->pattern, $input->replacement);
         return Response::json(200, ['id' => $id]);
     }
 
     public function update(Request $req, array $params, int $userId): Response {
         $id = (int)$params['id'];
         if ($this->rules->findOwned($userId, $id) === null) {
-            return Response::error(404, 'not_found', 'Rule not found.');
+            return Response::notFound('Rule not found.');
         }
-        [$name, $pattern, $replacement, $err] = $this->validateBody($req->json ?? []);
-        if ($err !== null) return $err;
-        $this->rules->update($userId, $id, $name, $pattern, $replacement);
+        $input = $this->validateBody($req->json ?? []);
+        if ($input instanceof Response) return $input;
+        $this->rules->update($userId, $id, $input->name, $input->pattern, $input->replacement);
         return Response::json(200, ['ok' => true]);
     }
 
     public function delete(Request $req, array $params, int $userId): Response {
         $id = (int)$params['id'];
         if (!$this->rules->delete($userId, $id)) {
-            return Response::error(404, 'not_found', 'Rule not found.');
+            return Response::notFound('Rule not found.');
         }
         return Response::json(200, ['ok' => true]);
     }
 
-    /** @return array{0:string,1:string,2:string,3:?Response} */
-    private function validateBody(array $body): array {
+    /**
+     * Returns a RuleInput on success, or a Response describing the first
+     * validation/parse failure encountered. Pattern and replacement must
+     * each be syntactically-valid Emmet — checked here so handlers don't
+     * have to repeat the try/catch.
+     */
+    private function validateBody(array $body): RuleInput|Response {
         $v = new Validation($body);
         $name        = $v->requireString('name', 1, 128);
         $pattern     = $v->requireString('pattern', 1, 65535);
         $replacement = $v->requireString('replacement', 1, 65535);
         if (!$v->ok()) {
-            return ['', '', '', Response::error(422, 'validation_failed', 'Invalid rule.', $v->errors())];
+            return Response::validationFailed('Invalid rule.', $v->errors());
         }
-        try { TransformEngine::emmetParse($pattern); }
-        catch (EmmetParseError $e) {
-            return ['', '', '', Response::error(422, 'parse_error', $e->getMessage(), ['field' => 'pattern'])];
+        foreach (['pattern' => $pattern, 'replacement' => $replacement] as $field => $value) {
+            try {
+                TransformEngine::emmetParse($value);
+            } catch (EmmetParseError $e) {
+                return Response::parseError($e, ['field' => $field]);
+            }
         }
-        try { TransformEngine::emmetParse($replacement); }
-        catch (EmmetParseError $e) {
-            return ['', '', '', Response::error(422, 'parse_error', $e->getMessage(), ['field' => 'replacement'])];
-        }
-        return [$name, $pattern, $replacement, null];
+        return new RuleInput($name, $pattern, $replacement);
     }
 }
