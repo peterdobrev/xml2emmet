@@ -1,3 +1,5 @@
+import { escHtml } from '../util.js';
+
 export function render(container, { api }) {
   let kind = 'html';
 
@@ -75,8 +77,4 @@ function tableHtml(headers, rows) {
     <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
     <tbody>${rows.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>
   </table>`;
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

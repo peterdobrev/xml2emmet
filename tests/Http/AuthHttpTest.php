@@ -36,7 +36,7 @@ final class AuthHttpTest extends HttpTestCase {
         $this->cookies = [];
         [$s2, , $b2] = $this->post('/api/auth/login', ['username' => 'alice', 'password' => 'wrong']);
         $this->assertSame(401, $s2);
-        $this->assertSame('Username or password is incorrect.', $b2['message']);
+        $this->assertSame('unauthenticated', $b2['error']);
     }
 
     public function testMeWhileAnonymousIs401(): void {

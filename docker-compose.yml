@@ -4,11 +4,12 @@ services:
     container_name: xml2emmet-mysql
     environment:
       MYSQL_ROOT_PASSWORD: secret
-      MYSQL_DATABASE: xml2emmet_test
+      MYSQL_DATABASE: xml2emmet
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-psecret"]
       interval: 5s
@@ -30,7 +31,7 @@ services:
       XML2EMMET_DB_PORT: 3306
       XML2EMMET_DB_USER: root
       XML2EMMET_DB_PASS: secret
-      XML2EMMET_DB_NAME: xml2emmet_test
+      XML2EMMET_DB_NAME: xml2emmet
       XML2EMMET_DEBUG: "1"
     ports:
       - "8080:8080"

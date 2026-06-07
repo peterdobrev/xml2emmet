@@ -1,8 +1,11 @@
 # Branch: `feat/http-api` — HTTP API Layer
 
-**Spec:** `docs/superpowers/specs/2026-05-25-http-api-design.md`
 **Tests:** 172 passing, 0 failures (requires MySQL — see Running Tests below)
 **Branch base:** `origin/master` (merged from `feat/engine-core`)
+
+> The original spec referenced here lived under `docs/superpowers/` and is no
+> longer tracked. The summary below is what this branch shipped, with links
+> to the in-tree files for each piece.
 
 ---
 
@@ -69,7 +72,8 @@ Replaces the old PHP-rendered demo page. On every request:
 3. Start session
 4. Build `Request` from globals
 5. Connect PDO, instantiate stores and handlers
-6. Register 13 routes on `Router`, set `userId` from session
+6. Register the API routes on `Router` (12 endpoints across auth, transform,
+   rules, history, stats), set `userId` from session
 7. Dispatch, append `X-Request-Id` header to every response
 8. Top-level `catch(\Throwable)` returns `500 internal_error` with optional trace when `XML2EMMET_DEBUG=1`
 
@@ -155,7 +159,7 @@ File: `src/Config.php:30`
 
 ## What is explicitly out of scope for this branch
 
-Per the spec (`docs/superpowers/specs/2026-05-25-http-api-design.md` §1):
+The original spec defined the following as out of scope for this branch:
 
 - Browser SPA / frontend client — no HTML UI, only the JSON API
 - CI configuration — no `.github/workflows`, no Dockerfile for deployment

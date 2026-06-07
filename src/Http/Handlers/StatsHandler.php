@@ -16,7 +16,7 @@ final class StatsHandler {
         $v = new Validation($body);
         $kind  = $v->requireEnum('kind', ['html', 'css']);
         $input = $v->requireString('input', 0, 2_000_000);
-        if (!$v->ok()) return Response::error(422, 'validation_failed', 'Invalid stats request.', $v->errors());
+        if (!$v->ok()) return Response::validationFailed('Invalid stats request.', $v->errors());
 
         if ($kind === 'css') {
             $counts = CssClassCounter::count($input);
@@ -30,7 +30,7 @@ final class StatsHandler {
 
         // HTML
         try { $tree = TransformEngine::xmlParse($input, 'html'); }
-        catch (XmlParseError $e) { return Response::error(422, 'parse_error', $e->getMessage()); }
+        catch (XmlParseError $e) { return Response::parseError($e); }
 
         $s = Stats::compute($tree);
         $depthHist = [];

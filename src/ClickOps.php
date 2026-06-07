@@ -11,8 +11,9 @@ final class ClickOps {
             throw new ClickOpError('unknown_op', "Unknown click-op type: $type");
         }
 
+        // Path values are validated lazily by the walker (per-level bounds check
+        // when navigating). Type/sign of each element is checked there too.
         $path = $op['path'] ?? [];
-        self::validatePath($path);
 
         return match ($type) {
             'swap'   => self::swap($root, $path, $op),
@@ -35,16 +36,12 @@ final class ClickOps {
         $parentPath = array_slice($path, 0, -1);
         $idx        = $path[count($path) - 1];
         $parent     = self::getAt($root, $parentPath);
-        if ($idx + 1 >= count($parent->children)) {
+        if (!is_int($idx) || $idx < 0 || $idx + 1 >= count($parent->children)) {
             throw new ClickOpError('bad_path', "swap: node at depth " . count($path) . " index $idx has no next sibling");
         }
-        $a = $parent->children[$idx];
-        $b = $parent->children[$idx + 1];
         $newChildren = $parent->children;
-        $newChildren[$idx]     = $b;
-        $newChildren[$idx + 1] = $a;
-        $newParent = new Node($parent->tag, $parent->attrs, $newChildren, $parent->text, $parent->appliedRules);
-        return self::replaceAt($root, $parentPath, $newParent);
+        [$newChildren[$idx], $newChildren[$idx + 1]] = [$newChildren[$idx + 1], $newChildren[$idx]];
+        return self::replaceAt($root, $parentPath, $parent->withChildren($newChildren));
     }
 
     private static function rename(Node $root, array $path, array $op): Node {
@@ -60,7 +57,16 @@ final class ClickOps {
         if ($path === []) {
             throw new ClickOpError('unwrap_root', "unwrap requires a non-empty path");
         }
-        return self::unwrapAt($root, $path);
+        return self::transformParent($root, $path, function (Node $parent, int $leafIdx): Node {
+            self::checkChildIndex($parent, $leafIdx);
+            $target  = $parent->children[$leafIdx];
+            $newKids = array_merge(
+                array_slice($parent->children, 0, $leafIdx),
+                $target->children,
+                array_slice($parent->children, $leafIdx + 1),
+            );
+            return $parent->withChildren($newKids);
+        });
     }
 
     private static function wrap(Node $root, array $path, array $op): Node {
@@ -87,7 +93,6 @@ final class ClickOps {
             throw new ClickOpError('missing_to', "move requires a 'to' array path");
         }
         $to = $op['to'];
-        self::validatePath($to);
 
         $subtree     = self::getAt($root, $path);
         $afterDelete = self::replaceAt($root, $path, null);
@@ -139,15 +144,48 @@ final class ClickOps {
     private static function getAt(Node $root, array $path): Node {
         $node = $root;
         foreach ($path as $depth => $idx) {
-            if (!is_int($idx) || $idx < 0 || $idx >= count($node->children)) {
-                throw new ClickOpError(
-                    'bad_path',
-                    "Path index $idx out of range at depth $depth (node <{$node->tag}> has " . count($node->children) . " children)"
-                );
-            }
+            self::checkChildIndex($node, $idx, $depth);
             $node = $node->children[$idx];
         }
         return $node;
+    }
+
+    /**
+     * Walk to the node whose children list is targeted by $path, then call $atParent
+     * on it with the leaf index. $atParent returns the rebuilt parent. Each level
+     * above the leaf parent is rebuilt with its mutated child slot via withChildren.
+     *
+     * Bounds at each navigated level are checked by checkChildIndex; the leaf-level
+     * check belongs to $atParent (since 'insert at position N' allows index === count
+     * while 'replace/unwrap at N' does not).
+     *
+     * Path must be non-empty.
+     */
+    private static function transformParent(Node $root, array $path, callable $atParent, int $depth = 0): Node {
+        if ($depth === count($path) - 1) {
+            // We're at the parent of the leaf — let the callback rebuild it.
+            return $atParent($root, $path[$depth]);
+        }
+        $idx = $path[$depth];
+        self::checkChildIndex($root, $idx, $depth);
+        $newChildren = $root->children;
+        $newChildren[$idx] = self::transformParent($root->children[$idx], $path, $atParent, $depth + 1);
+        return $root->withChildren($newChildren);
+    }
+
+    /**
+     * Validate that $idx is an in-range child index of $node. Throws ClickOpError
+     * with a contextual message otherwise. $depth (when provided) is included in
+     * the message; pass null for leaf-level checks where depth is implicit.
+     */
+    private static function checkChildIndex(Node $node, mixed $idx, ?int $depth = null): void {
+        if (!is_int($idx) || $idx < 0 || $idx >= count($node->children)) {
+            $depthStr = $depth !== null ? " at depth $depth" : '';
+            throw new ClickOpError(
+                'bad_path',
+                "Path index $idx out of range$depthStr (node <{$node->tag}> has " . count($node->children) . " children)"
+            );
+        }
     }
 
     /**
@@ -161,79 +199,16 @@ final class ClickOps {
             }
             return $new;
         }
-
-        $idx  = $path[0];
-        $rest = array_slice($path, 1);
-
-        if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
-            throw new ClickOpError(
-                'bad_path',
-                "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
-            );
-        }
-
-        $newChildren = [];
-        foreach ($root->children as $i => $child) {
-            if ($i === $idx) {
-                if ($rest === []) {
-                    // Leaf: replace or drop this child
-                    if ($new !== null) {
-                        $newChildren[] = $new;
-                    }
-                    // if $new === null, we skip (delete) the child
-                } else {
-                    $newChildren[] = self::replaceAt($child, $rest, $new);
-                }
+        return self::transformParent($root, $path, function (Node $parent, int $leafIdx) use ($new): Node {
+            self::checkChildIndex($parent, $leafIdx);
+            $newChildren = $parent->children;
+            if ($new === null) {
+                array_splice($newChildren, $leafIdx, 1);
             } else {
-                $newChildren[] = $child;
+                $newChildren[$leafIdx] = $new;
             }
-        }
-
-        return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
-    }
-
-    /**
-     * Unwrap the node at $path: splice its children into the parent at the same index.
-     * $path must be non-empty.
-     */
-    private static function unwrapAt(Node $root, array $path): Node {
-        if (count($path) === 1) {
-            $idx    = $path[0];
-            $target = self::getAt($root, $path);
-            $newChildren = [];
-            foreach ($root->children as $i => $child) {
-                if ($i === $idx) {
-                    // Splice in the target's children
-                    foreach ($target->children as $tc) {
-                        $newChildren[] = $tc;
-                    }
-                } else {
-                    $newChildren[] = $child;
-                }
-            }
-            return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
-        }
-
-        // Recurse: navigate one level deeper
-        $idx  = $path[0];
-        $rest = array_slice($path, 1);
-
-        if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
-            throw new ClickOpError(
-                'bad_path',
-                "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
-            );
-        }
-
-        $newChildren = [];
-        foreach ($root->children as $i => $child) {
-            if ($i === $idx) {
-                $newChildren[] = self::unwrapAt($child, $rest);
-            } else {
-                $newChildren[] = $child;
-            }
-        }
-        return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
+            return $parent->withChildren($newChildren);
+        });
     }
 
     /**
@@ -246,58 +221,17 @@ final class ClickOps {
         if ($path === []) {
             throw new ClickOpError('bad_path', "insertAt requires a non-empty path");
         }
-
-        if (count($path) === 1) {
-            // Insert at this level before index $path[0]
-            $insertIdx = $path[0];
-            $children  = $root->children;
-            if (!is_int($insertIdx) || $insertIdx < 0 || $insertIdx > count($children)) {
+        return self::transformParent($root, $path, function (Node $parent, int $insertIdx) use ($new): Node {
+            $count = count($parent->children);
+            if (!is_int($insertIdx) || $insertIdx < 0 || $insertIdx > $count) {
                 throw new ClickOpError(
                     'bad_path',
-                    "Insert index $insertIdx out of range (node <{$root->tag}> has " . count($children) . " children)"
+                    "Insert index $insertIdx out of range (node <{$parent->tag}> has $count children)"
                 );
             }
-            $newChildren = [];
-            foreach ($children as $i => $child) {
-                if ($i === $insertIdx) {
-                    $newChildren[] = $new;
-                }
-                $newChildren[] = $child;
-            }
-            if ($insertIdx === count($children)) {
-                $newChildren[] = $new;
-            }
-            return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
-        }
-
-        // Navigate deeper: the first path element selects which child to recurse into
-        $idx  = $path[0];
-        $rest = array_slice($path, 1);
-
-        if (!is_int($idx) || $idx < 0 || $idx >= count($root->children)) {
-            throw new ClickOpError(
-                'bad_path',
-                "Path index $idx out of range (node <{$root->tag}> has " . count($root->children) . " children)"
-            );
-        }
-
-        $newChildren = [];
-        foreach ($root->children as $i => $child) {
-            if ($i === $idx) {
-                $newChildren[] = self::insertAt($child, $rest, $new);
-            } else {
-                $newChildren[] = $child;
-            }
-        }
-        return new Node($root->tag, $root->attrs, $newChildren, $root->text, $root->appliedRules);
-    }
-
-    /** Validate that path is an array of non-negative integers (values checked during navigation). */
-    private static function validatePath(array $path): void {
-        foreach ($path as $i => $idx) {
-            if (!is_int($idx) || $idx < 0) {
-                throw new ClickOpError('bad_path', 'Path element at position ' . $i . ' must be a non-negative integer');
-            }
-        }
+            $newChildren = $parent->children;
+            array_splice($newChildren, $insertIdx, 0, [$new]);
+            return $parent->withChildren($newChildren);
+        });
     }
 }

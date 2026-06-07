@@ -27,6 +27,10 @@ final class HistoryStoreTest extends DbTestCase {
         $id = $store->insert($a, 'xml2emmet', '<x/>', 'x', ['mode'=>'xml','show_text'=>true,'show_attrs'=>true,'show_attr_values'=>true], [42]);
         $this->assertNotNull($store->findOwned($a, $id));
         $this->assertNull($store->findOwned($b, $id));
+        // listForUser must respect the same boundary — mirror RuleStoreTest's
+        // cross-user isolation assertion.
+        $this->assertSame(0, $store->listForUser($b, 1, 10)['total']);
+        $this->assertSame([], $store->listForUser($b, 1, 10)['items']);
     }
 
     public function testSettingsAndRuleIdsRoundTripAsJson(): void {

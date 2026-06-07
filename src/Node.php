@@ -13,6 +13,10 @@ final class Node {
     public function withChild(Node $c): self {
         return new self($this->tag, $this->attrs, [...$this->children, $c], $this->text, $this->appliedRules);
     }
+    /** @param Node[] $children */
+    public function withChildren(array $children): self {
+        return new self($this->tag, $this->attrs, $children, $this->text, $this->appliedRules);
+    }
     public function withAttr(string $k, string $v): self {
         return new self($this->tag, [...$this->attrs, $k => $v], $this->children, $this->text, $this->appliedRules);
     }

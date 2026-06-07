@@ -53,7 +53,11 @@ final class RuleStore {
         return $stmt->rowCount() > 0;
     }
 
-    /** Verify a list of rule ids all belong to a user. Returns ids that don't. */
+    /** Verify a list of rule ids all belong to a user. Returns ids that don't.
+     *
+     * Kept for callers that only need ownership validation; for "load and parse",
+     * use findManyOwned() to get ownership + payload in one round-trip.
+     */
     public function findUnownedIds(int $userId, array $ids): array {
         if ($ids === []) return [];
         $place = implode(',', array_fill(0, count($ids), '?'));
@@ -61,5 +65,30 @@ final class RuleStore {
         $stmt->execute([...$ids, $userId]);
         $owned = array_map('intval', $stmt->fetchAll(\PDO::FETCH_COLUMN));
         return array_values(array_diff(array_map('intval', $ids), $owned));
+    }
+
+    /**
+     * Fetch every rule owned by $userId whose id is in $ids, returned as a
+     * map keyed by id (int). Ids in $ids that don't belong to the user — or
+     * don't exist — are simply absent from the result. One round-trip, replacing
+     * the previous findUnownedIds + per-id findOwned (N+1) pattern.
+     *
+     * @param list<int> $ids
+     * @return array<int,array{id:int,name:string,pattern_emmet:string,replacement_emmet:string,created_at:string,updated_at:string}>
+     */
+    public function findManyOwned(int $userId, array $ids): array {
+        if ($ids === []) return [];
+        $place = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT id, name, pattern_emmet, replacement_emmet, created_at, updated_at
+               FROM rules WHERE user_id = ? AND id IN ($place)"
+        );
+        $stmt->execute([$userId, ...$ids]);
+        $byId = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $row['id'] = (int)$row['id'];
+            $byId[$row['id']] = $row;
+        }
+        return $byId;
     }
 }

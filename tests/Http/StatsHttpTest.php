@@ -9,8 +9,8 @@ final class StatsHttpTest extends HttpTestCase {
         [$status, , $body] = $this->post('/api/stats', ['kind' => 'html', 'input' => $html]);
         $this->assertSame(200, $status, json_encode($body));
         $this->assertSame('html', $body['kind']);
-        $this->assertGreaterThanOrEqual(3, $body['elements']);
-        $this->assertGreaterThanOrEqual(3, $body['distinct_tags']);
+        $this->assertSame(3, $body['elements']);
+        $this->assertSame(3, $body['distinct_tags']);
         $btn = array_filter($body['top_classes'], fn($e) => $e['name'] === 'btn');
         $this->assertNotEmpty($btn);
         $this->assertSame(2, reset($btn)['count']);

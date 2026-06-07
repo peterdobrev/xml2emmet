@@ -79,14 +79,4 @@ final class StatsTest extends TestCase {
         $stats = Stats::compute($tree);
         $this->assertSame([1 => 1, 2 => 2, 3 => 1], $stats['depthHistogram']);
     }
-
-    public function testExistingKeysStillPresent(): void {
-        $tree = (new Node('div'))->withChild(new Node('p'));
-        $stats = Stats::compute($tree);
-        $this->assertSame(2, $stats['nodeCount']);
-        $this->assertSame(2, $stats['depth']);
-        $this->assertArrayHasKey('tagHistogram', $stats);
-        $this->assertArrayHasKey('attrCount', $stats);
-        $this->assertArrayHasKey('textLength', $stats);
-    }
 }

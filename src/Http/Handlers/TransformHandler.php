@@ -6,7 +6,7 @@ use App\ClickOpError;
 use App\Db\HistoryStore;
 use App\Db\RuleStore;
 use App\EmmetParseError;
-use App\Http\Json;
+use App\Http\ErrorCodes;
 use App\Http\NodeJson;
 use App\Http\Request;
 use App\Http\Response;
@@ -38,10 +38,10 @@ final class TransformHandler {
         $save = (bool)($body['save'] ?? false);
 
         if (!$v->ok() || !$sv->ok()) {
-            return Response::error(422, 'validation_failed', 'Invalid transform request.', $v->errors() + $sv->errors());
+            return Response::validationFailed('Invalid transform request.', $v->errors() + $sv->errors());
         }
         foreach ($ruleIds as $rid) {
-            if (!is_int($rid)) return Response::error(422, 'validation_failed', 'rule_ids must be integers.', ['rule_ids' => 'each id must be int']);
+            if (!is_int($rid)) return Response::validationFailed('rule_ids must be integers.', ['rule_ids' => 'each id must be int']);
         }
 
         // 1. Parse input
@@ -50,23 +50,25 @@ final class TransformHandler {
                 ? TransformEngine::xmlParse($input, $mode)
                 : TransformEngine::emmetParse($input);
         } catch (XmlParseError | EmmetParseError $e) {
-            return Response::error(422, 'parse_error', $e->getMessage());
+            return Response::parseError($e);
         }
 
         // 2. Apply rules in order; reject foreign rule ids
         if ($ruleIds !== []) {
-            $unowned = $this->rules->findUnownedIds($userId, $ruleIds);
+            $intIds = array_map('intval', $ruleIds);
+            $byId   = $this->rules->findManyOwned($userId, $intIds);
+            $unowned = array_values(array_diff($intIds, array_keys($byId)));
             if ($unowned !== []) {
-                return Response::error(404, 'not_found', 'Unknown rule id.', ['rule_ids' => $unowned]);
+                return Response::notFound('Unknown rule id.', ['rule_ids' => $unowned]);
             }
             $ruleObjs = [];
-            foreach ($ruleIds as $rid) {
-                $row = $this->rules->findOwned($userId, (int)$rid);
+            foreach ($intIds as $rid) {
+                $row = $byId[$rid];
                 try {
                     $pat = TransformEngine::emmetParse($row['pattern_emmet']);
                     $rep = TransformEngine::emmetParse($row['replacement_emmet']);
                 } catch (EmmetParseError $e) {
-                    return Response::error(422, 'parse_error', "Rule {$row['id']} failed to parse: " . $e->getMessage(), ['rule_id' => $row['id']]);
+                    return Response::error(422, ErrorCodes::PARSE_ERROR, "Rule {$row['id']} failed to parse: " . $e->getMessage(), ['rule_id' => $row['id']]);
                 }
                 $ruleObjs[] = new Rule((string)$row['id'], $pat, $rep);
             }
@@ -76,7 +78,7 @@ final class TransformHandler {
         // 3. Apply click-ops in order
         foreach ($clickOps as $i => $op) {
             if (!is_array($op)) {
-                return Response::error(422, 'validation_failed', "click_ops[$i] must be an object", ['op_index' => $i]);
+                return Response::validationFailed("click_ops[$i] must be an object", ['op_index' => $i]);
             }
             try {
                 $tree = TransformEngine::applyClickOp($tree, $op);

@@ -1,5 +1,3 @@
-const BASE = '';
-
 async function _fetch(method, path, body) {
   const opts = {
     method,
@@ -9,14 +7,14 @@ async function _fetch(method, path, body) {
   if (body !== undefined) opts.body = JSON.stringify(body);
   let res;
   try {
-    res = await fetch(BASE + path, opts);
+    res = await fetch(path, opts);
   } catch {
     return { ok: false, status: 0, code: 'network_error', message: 'Could not reach server.', details: {} };
   }
   let json;
   try { json = await res.json(); } catch { json = {}; }
   if (!res.ok) {
-    if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register' && path !== '/api/auth/me') {
+    if (res.status === 401 && path !== '/api/auth/login' && path !== '/api/auth/register' && path !== '/api/auth/logout' && path !== '/api/auth/me') {
       location.reload();
       return { ok: false, status: 401, code: 'unauthenticated', message: 'Session expired.', details: {} };
     }

@@ -1,3 +1,5 @@
+import { escHtml } from '../util.js';
+
 export function render(container, { api }) {
   let page = 1;
   const perPage = 20;
@@ -49,7 +51,7 @@ export function render(container, { api }) {
 
   function toggleExpand(tbody, item, tr) {
     const existing = tbody.querySelector('.history-detail-row');
-    if (existing && existing.dataset.forId == item.id) {
+    if (existing && existing.dataset.forId === String(item.id)) {
       existing.remove();
       expandedId = null;
       return;
@@ -73,8 +75,4 @@ export function render(container, { api }) {
   }
 
   load();
-}
-
-function escHtml(str) {
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }

@@ -15,9 +15,14 @@ final class RuleStoreTest extends DbTestCase {
         $this->assertCount(1, $rules);
         $this->assertSame('flat lists', $rules[0]['name']);
 
-        $store->update($uid, $id, 'flat to ordered', 'ul>li*', 'ol>li*');
+        // Vary all three updatable columns so a column-swap regression in
+        // RuleStore::update would surface as a test failure rather than a
+        // silent same-value pass.
+        $store->update($uid, $id, 'flat to ordered', 'div>p*', 'section>p*');
         $r = $store->findOwned($uid, $id);
-        $this->assertSame('flat to ordered', $r['name']);
+        $this->assertSame('flat to ordered',     $r['name']);
+        $this->assertSame('div>p*',              $r['pattern_emmet']);
+        $this->assertSame('section>p*',          $r['replacement_emmet']);
 
         $store->delete($uid, $id);
         $this->assertNull($store->findOwned($uid, $id));
