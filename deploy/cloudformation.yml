@@ -137,7 +137,7 @@ Resources:
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Подмрежи за xml2emmet RDS
+      DBSubnetGroupDescription: Subnets for xml2emmet RDS
       SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
 
   RDSInstance:
