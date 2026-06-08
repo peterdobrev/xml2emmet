@@ -113,7 +113,7 @@ Resources:
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: HTTP + SSH към EC2
+      GroupDescription: HTTP and SSH access to EC2
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - { IpProtocol: tcp, FromPort: 80,  ToPort: 80,  CidrIp: 0.0.0.0/0 }
@@ -123,7 +123,7 @@ Resources:
   RDSSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: MySQL само от EC2
+      GroupDescription: MySQL access from EC2 only
       VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol:            tcp
