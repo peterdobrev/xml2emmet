@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
+use App\Aws\HistoryExporter;
 use App\Db\Db;
 use App\Db\HistoryStore;
 use App\Db\RuleStore;
@@ -37,6 +38,13 @@ try {
     }
 
     $req = Request::fromGlobals();
+
+    // ALB health check — must respond before DB connection attempt.
+    if ($req->method === 'GET' && $req->path === '/api/health') {
+        Response::json(200, ['status' => 'ok'])->send();
+        return;
+    }
+
     $pdo = Db::connect($cfg);
     $userStore    = new UserStore($pdo);
     $ruleStore    = new RuleStore($pdo);
@@ -45,7 +53,10 @@ try {
     $auth      = new AuthHandler($userStore);
     $transform = new TransformHandler($ruleStore, $historyStore);
     $rules     = new RulesHandler($ruleStore);
-    $history   = new HistoryHandler($historyStore);
+    $exporter  = $cfg->s3Bucket !== ''
+        ? new HistoryExporter($cfg->s3Bucket, $cfg->awsRegion)
+        : null;
+    $history   = new HistoryHandler($historyStore, $exporter);
     $stats     = new StatsHandler();
 
     $router = new Router();
@@ -68,8 +79,9 @@ try {
     $router->add('DELETE', '/api/rules/{id}', fn($r, $p, $u) => $rules->delete($r, $p, $u), gate: true);
 
     // History
-    $router->add('GET', '/api/history',      fn($r, $p, $u) => $history->list($r, $p, $u),   gate: true);
-    $router->add('GET', '/api/history/{id}', fn($r, $p, $u) => $history->detail($r, $p, $u), gate: true);
+    $router->add('GET',  '/api/history',         fn($r, $p, $u) => $history->list($r, $p, $u),   gate: true);
+    $router->add('GET',  '/api/history/{id}',    fn($r, $p, $u) => $history->detail($r, $p, $u), gate: true);
+    $router->add('POST', '/api/history/export',  fn($r, $p, $u) => $history->export($r, $p, $u), gate: true);
 
     // Stats
     $router->add('POST', '/api/stats', fn($r, $p, $u) => $stats->stats($r, $p, $u), gate: true);

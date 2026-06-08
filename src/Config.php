@@ -12,6 +12,8 @@ final class Config {
         public readonly string $sessionName,
         public readonly bool   $secureCookie,
         public readonly bool   $debug,
+        public readonly string $s3Bucket,
+        public readonly string $awsRegion,
     ) {}
 
     /** @param array<string,string> $env */
@@ -30,6 +32,8 @@ final class Config {
             sessionName:  $env['XML2EMMET_SESSION_NAME'] ?? 'xml2emmet_sid',
             secureCookie: ($env['XML2EMMET_SECURE_COOKIE'] ?? '0') === '1',
             debug:        ($env['XML2EMMET_DEBUG']        ?? '0') === '1',
+            s3Bucket:     $env['XML2EMMET_S3_BUCKET']    ?? '',
+            awsRegion:    $env['XML2EMMET_AWS_REGION']   ?? 'eu-central-1',
         );
     }
 }

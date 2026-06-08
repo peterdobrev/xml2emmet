@@ -1,0 +1,333 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  xml2emmet — EC2 + RDS MySQL + S3
+  Услуги: EC2 (лекция 7), RDS MySQL (лекция 8), S3 (лекция 4),
+          VPC + Security Groups (лекции 5-6), SSM Parameter Store (лекция 15),
+          CloudWatch (лекция 16)
+  Съвместим с AWS Academy Learner Lab — използва съществуващия LabInstanceProfile.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Съществуваща EC2 Key Pair за SSH достъп
+
+  DBMasterPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    Description: Парола за RDS root потребителя (мин. 8 символа)
+
+  GithubRepoUrl:
+    Type: String
+    Description: URL на GitHub репото (напр. https://github.com/USER/xml2emmet.git)
+
+  AppBranch:
+    Type: String
+    Default: feat/aws-ec2-rds-s3
+    Description: Git клон за деплойване
+
+  LabInstanceProfile:
+    Type: String
+    Default: LabInstanceProfile
+    Description: >
+      Името на Instance Profile от AWS Academy Learner Lab.
+      По подразбиране "LabInstanceProfile" — не го сменяй освен ако
+      Academy не ти даде различно.
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # ── VPC (лекция 5-6) ──────────────────────────────────────────────────────
+
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: true
+      EnableDnsSupport:   true
+      Tags: [{ Key: Name, Value: xml2emmet-vpc }]
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags: [{ Key: Name, Value: xml2emmet-igw }]
+
+  IGWAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId:             !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:               !Ref VPC
+      CidrBlock:           10.0.1.0/24
+      AvailabilityZone:    !Select [0, !GetAZs '']
+      MapPublicIpOnLaunch: true
+      Tags: [{ Key: Name, Value: xml2emmet-public }]
+
+  # RDS изисква subnet group с поне 2 зони
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:            !Ref VPC
+      CidrBlock:        10.0.2.0/24
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags: [{ Key: Name, Value: xml2emmet-private-a }]
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:            !Ref VPC
+      CidrBlock:        10.0.3.0/24
+      AvailabilityZone: !Select [1, !GetAZs '']
+      Tags: [{ Key: Name, Value: xml2emmet-private-b }]
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: IGWAttachment
+    Properties:
+      RouteTableId:         !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId:            !Ref InternetGateway
+
+  PublicSubnetAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId:     !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # ── Security Groups (лекция 5-6) ─────────────────────────────────────────
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: HTTP + SSH към EC2
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - { IpProtocol: tcp, FromPort: 80,  ToPort: 80,  CidrIp: 0.0.0.0/0 }
+        - { IpProtocol: tcp, FromPort: 22,  ToPort: 22,  CidrIp: 0.0.0.0/0 }
+      Tags: [{ Key: Name, Value: xml2emmet-ec2-sg }]
+
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: MySQL само от EC2
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol:            tcp
+          FromPort:              3306
+          ToPort:                3306
+          SourceSecurityGroupId: !Ref EC2SecurityGroup
+      Tags: [{ Key: Name, Value: xml2emmet-rds-sg }]
+
+  # ── RDS MySQL (лекция 8) ──────────────────────────────────────────────────
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Подмрежи за xml2emmet RDS
+      SubnetIds: [!Ref PrivateSubnetA, !Ref PrivateSubnetB]
+
+  RDSInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier:  xml2emmet-db
+      DBInstanceClass:       db.t3.micro
+      Engine:                mysql
+      EngineVersion:         '8.0'
+      MasterUsername:        xml2emmet_admin
+      MasterUserPassword:    !Ref DBMasterPassword
+      DBName:                xml2emmet
+      DBSubnetGroupName:     !Ref DBSubnetGroup
+      VPCSecurityGroups:     [!Ref RDSSecurityGroup]
+      AllocatedStorage:      '20'
+      StorageType:           gp2
+      StorageEncrypted:      false
+      BackupRetentionPeriod: 1
+      MultiAZ:               false
+      PubliclyAccessible:    false
+      Tags: [{ Key: Name, Value: xml2emmet-rds }]
+
+  # ── S3 (лекция 4) — за експорт на история ────────────────────────────────
+
+  HistoryBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      LifecycleConfiguration:
+        Rules:
+          - Id: ExpireExports
+            Status: Enabled
+            ExpirationInDays: 7
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls:       true
+        BlockPublicPolicy:     true
+        IgnorePublicAcls:      true
+        RestrictPublicBuckets: true
+      Tags: [{ Key: Name, Value: xml2emmet-history }]
+
+  # ── SSM Parameter Store (лекция 15) ──────────────────────────────────────
+
+  SSMDbHost:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:  /xml2emmet/db/host
+      Type:  String
+      Value: !GetAtt RDSInstance.Endpoint.Address
+
+  SSMDbUser:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:  /xml2emmet/db/user
+      Type:  String
+      Value: xml2emmet_admin
+
+  SSMDbPass:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:  /xml2emmet/db/pass
+      Type:  String
+      Value: !Ref DBMasterPassword
+
+  SSMBucket:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:  /xml2emmet/s3/bucket
+      Type:  String
+      Value: !Ref HistoryBucket
+
+  SSMRegion:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name:  /xml2emmet/s3/region
+      Type:  String
+      Value: !Ref AWS::Region
+
+  # ── CloudWatch Log Group (лекция 16) ─────────────────────────────────────
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:    /ec2/xml2emmet
+      RetentionInDays: 7
+
+  # ── EC2 Instance (лекция 7) ───────────────────────────────────────────────
+  # Използва LabInstanceProfile от AWS Academy — не създаваме нови IAM роли.
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    DependsOn: RDSInstance
+    Properties:
+      InstanceType:       t3.micro
+      KeyName:            !Ref KeyPairName
+      ImageId:            !Sub '{{resolve:ssm:/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64}}'
+      SubnetId:           !Ref PublicSubnet
+      SecurityGroupIds:   [!Ref EC2SecurityGroup]
+      IamInstanceProfile: !Ref LabInstanceProfile
+      Tags: [{ Key: Name, Value: xml2emmet-app }]
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -e
+          exec > >(tee /var/log/xml2emmet-init.log | logger -t xml2emmet-init) 2>&1
+
+          # 1. Пакети
+          dnf update -y
+          dnf install -y php8.2 php8.2-pdo php8.2-mysqlnd php8.2-json \
+                         php8.2-mbstring httpd git
+
+          # 2. Composer
+          curl -sS https://getcomposer.org/installer \
+            | php -- --install-dir=/usr/local/bin --filename=composer
+
+          # 3. Клониране на приложението
+          git clone --branch ${AppBranch} ${GithubRepoUrl} /var/www/html/xml2emmet
+          cd /var/www/html/xml2emmet
+          composer install --no-dev --optimize-autoloader
+
+          # 4. Credentials от SSM Parameter Store
+          REGION="${AWS::Region}"
+          DB_HOST=$(aws ssm get-parameter --region $REGION \
+                      --name /xml2emmet/db/host --query 'Parameter.Value' --output text)
+          DB_USER=$(aws ssm get-parameter --region $REGION \
+                      --name /xml2emmet/db/user --query 'Parameter.Value' --output text)
+          DB_PASS=$(aws ssm get-parameter --region $REGION \
+                      --name /xml2emmet/db/pass --query 'Parameter.Value' --output text)
+          S3_BUCKET=$(aws ssm get-parameter --region $REGION \
+                        --name /xml2emmet/s3/bucket --query 'Parameter.Value' --output text)
+
+          # 5. Apache env vars
+          cat > /etc/httpd/conf.d/xml2emmet-env.conf <<ENVEOF
+          SetEnv XML2EMMET_DB_HOST     $DB_HOST
+          SetEnv XML2EMMET_DB_USER     $DB_USER
+          SetEnv XML2EMMET_DB_PASS     $DB_PASS
+          SetEnv XML2EMMET_DB_NAME     xml2emmet
+          SetEnv XML2EMMET_DB_PORT     3306
+          SetEnv XML2EMMET_S3_BUCKET   $S3_BUCKET
+          SetEnv XML2EMMET_AWS_REGION  $REGION
+          SetEnv XML2EMMET_DEBUG       0
+          ENVEOF
+
+          # 6. Apache VirtualHost
+          cat > /etc/httpd/conf.d/xml2emmet.conf <<VHOSTEOF
+          <VirtualHost *:80>
+              DocumentRoot /var/www/html/xml2emmet/public
+              <Directory /var/www/html/xml2emmet/public>
+                  AllowOverride All
+                  Require all granted
+                  FallbackResource /index.php
+              </Directory>
+              ErrorLog  /var/log/httpd/xml2emmet-error.log
+              CustomLog /var/log/httpd/xml2emmet-access.log combined
+          </VirtualHost>
+          VHOSTEOF
+
+          chown -R apache:apache /var/www/html/xml2emmet
+
+          # 7. Миграция на базата данни
+          XML2EMMET_DB_HOST=$DB_HOST \
+          XML2EMMET_DB_USER=$DB_USER \
+          XML2EMMET_DB_PASS=$DB_PASS \
+          php /var/www/html/xml2emmet/bin/migrate.php
+
+          # 8. Старт на Apache
+          systemctl enable httpd
+          systemctl start httpd
+
+  ElasticIP:
+    Type: AWS::EC2::EIP
+    Properties:
+      InstanceId: !Ref EC2Instance
+      Tags: [{ Key: Name, Value: xml2emmet-eip }]
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  AppURL:
+    Description: Публичен адрес на приложението
+    Value: !Sub 'http://${ElasticIP}'
+
+  RDSEndpoint:
+    Description: RDS endpoint (за справка)
+    Value: !GetAtt RDSInstance.Endpoint.Address
+
+  S3BucketName:
+    Description: S3 bucket за история
+    Value: !Ref HistoryBucket
+
+  SSHCommand:
+    Description: Команда за SSH достъп
+    Value: !Sub 'ssh -i ${KeyPairName}.pem ec2-user@${ElasticIP}'
