@@ -256,8 +256,7 @@ Resources:
           # 3. Клониране на приложението
           git clone --branch ${AppBranch} ${GithubRepoUrl} /var/www/html/xml2emmet
           cd /var/www/html/xml2emmet
-          composer install --no-dev
-          composer require aws/aws-sdk-php:^3.318 --no-dev --update-no-dev
+          composer require aws/aws-sdk-php:^3.318 --no-dev
 
           # 4. Credentials от SSM Parameter Store
           REGION="${AWS::Region}"
