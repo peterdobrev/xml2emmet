@@ -241,6 +241,7 @@ Resources:
         Fn::Base64: !Sub |
           #!/bin/bash
           set -e
+          export HOME=/root
           exec > >(tee /var/log/xml2emmet-init.log | logger -t xml2emmet-init) 2>&1
 
           # 1. Пакети
