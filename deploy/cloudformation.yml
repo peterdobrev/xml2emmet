@@ -245,7 +245,7 @@ Resources:
 
           # 1. Пакети
           dnf update -y
-          dnf install -y php8.2 php8.2-pdo php8.2-mysqlnd php8.2-json \
+          dnf install -y php8.2 php8.2-pdo php8.2-mysqlnd \
                          php8.2-mbstring httpd git
 
           # 2. Composer
