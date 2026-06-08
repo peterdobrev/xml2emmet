@@ -33,142 +33,116 @@
 | **SSM Parameter Store** | 15 | DB credentials и S3 bucket; вземат се при boot |
 | **Amazon CloudWatch Logs** | 16 | Apache и PHP грешки → `/ec2/xml2emmet` |
 
----
-
-## Стъпка 0 — Настройка за AWS Academy Learner Lab
-
-> Тези стъпки важат само за AWS Academy. При личен акаунт използвай `aws configure`.
-
-**0.1 Стартирай лаба**
-
-1. Влез в [AWS Academy](https://awsacademy.instructure.com) → **Learner Lab**
-2. Натисни **Start Lab** (горе вляво) — изчакай докато кръгчето стане зелено (~1 мин)
-3. Натисни **AWS Details** → **AWS CLI**
-4. Копирай блока с credentials — изглежда така:
-
-```
-[default]
-aws_access_key_id=ASIA...
-aws_secret_access_key=xxxx...
-aws_session_token=xxxx... (много дълъг токен)
-```
-
-**0.2 Постави credentials (Windows)**
-
-Отвори `%USERPROFILE%\.aws\credentials` (създай файла ако не съществува) и постави блока:
-
-```
-[default]
-aws_access_key_id=ASIA...
-aws_secret_access_key=xxxx...
-aws_session_token=xxxx...
-```
-
-После задай региона:
-
-```powershell
-aws configure set region us-east-1
-```
-
-**0.3 Провери**
-
-```powershell
-aws sts get-caller-identity
-```
-
-Трябва да видиш JSON с `Account`, `UserId`, `Arn`.
-
-> **Важно:** Credentials изтичат след ~4 часа. При `ExpiredTokenException` повтори стъпки 0.1–0.2.
+> Всички команди по-долу се пускат в **AWS CloudShell** (bash терминал в браузъра).
+> CloudShell е достъпен от иконата горе вляво в AWS конзолата.
+> Credentials са вече конфигурирани — не се нуждаеш от `aws configure`.
 
 ---
 
-## Стъпка 1 — Подготовка
+## Стъпка 1 — Подготовка (само веднъж)
 
-**1.1 Обнови зависимостите локално**
+**1.1 Push на бранча от локалния компютър**
 
-```powershell
-cd xml2emmet
-composer require aws/aws-sdk-php:^3.318
-git add composer.json composer.lock
-git commit -m "chore: add aws/aws-sdk-php"
-```
-
-**1.2 Push на бранча**
-
-```powershell
+```bash
 git push -u origin feat/aws-ec2-rds-s3
 ```
 
-**1.3 Създай EC2 Key Pair**
+**1.2 Провери CloudShell**
 
-AWS Console → EC2 → **Key Pairs** → **Create key pair**
-- Name: `xml2emmet-key`
-- Format: `.pem`
-- Запази `.pem` файла — нужен е за SSH
+В CloudShell провери че акаунтът е наред:
+
+```bash
+aws sts get-caller-identity
+```
+
+Трябва да видиш JSON с `Account` и `Arn`.
+
+**1.3 Клонирай репото в CloudShell**
+
+```bash
+git clone -b feat/aws-ec2-rds-s3 \
+  https://github.com/YOUR_USER/xml2emmet.git
+cd xml2emmet
+```
+
+> Замени `YOUR_USER` с твоя GitHub username.
 
 ---
 
 ## Стъпка 2 — Deploy на CloudFormation стека
 
-Една команда създава цялата инфраструктура:
+Една команда създава цялата инфраструктура.
 
-```powershell
-aws cloudformation deploy `
-  --template-file deploy/cloudformation.yml `
-  --stack-name xml2emmet `
-  --parameter-overrides `
-      KeyPairName=xml2emmet-key `
-      DBMasterPassword=MyPassword123 `
-      GithubRepoUrl=https://github.com/YOUR_USER/xml2emmet.git `
-      AppBranch=feat/aws-ec2-rds-s3
+> **Key Pair**: В AWS Academy us-east-1 съществува готов key pair `vockey` — не създавай нов.
+
+```bash
+aws cloudformation deploy \
+  --template-file deploy/cloudformation.yml \
+  --stack-name xml2emmet \
+  --parameter-overrides \
+      KeyPairName=vockey \
+      DBMasterPassword=MyPassword123 \
+      GithubRepoUrl=https://github.com/YOUR_USER/xml2emmet.git \
+      AppBranch=feat/aws-ec2-rds-s3 \
+  --region us-east-1
 ```
 
-> Изчакай ~10-12 минути. RDS отнема най-много.
+> Замени `MyPassword123` с реална парола (мин. 8 символа) и `YOUR_USER` с GitHub username.
+> Изчакай ~10-12 минути — RDS отнема най-много.
 
 Провери статуса:
 
-```powershell
-aws cloudformation describe-stacks `
-  --stack-name xml2emmet `
-  --query 'Stacks[0].StackStatus'
+```bash
+aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].StackStatus' \
+  --region us-east-1
 ```
 
 Трябва да видиш `"CREATE_COMPLETE"`.
 
 ---
 
-## Стъпка 3 — Вземи URL-а
+## Стъпка 3 — Вземи URL-а на приложението
 
-```powershell
-aws cloudformation describe-stacks `
-  --stack-name xml2emmet `
-  --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' `
-  --output text
+```bash
+aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' \
+  --output text \
+  --region us-east-1
 ```
 
 Отвори URL-а в браузъра → трябва да видиш login страницата.
 
-> Ако страницата не се зарежда веднага, изчакай 2-3 мин — bootstrap скриптът все още може да тече.
+> Ако страницата не се зарежда веднага, изчакай 2-3 мин и презареди.
+> Bootstrap скриптът (инсталация на PHP, Apache, SDK, миграция) тече ~3-4 мин след EC2 start.
 
 ---
 
 ## Стъпка 4 — Провери логовете (при проблем)
 
 **Чрез CloudWatch:**
-```powershell
-aws logs tail /ec2/xml2emmet --follow
+
+```bash
+aws logs tail /ec2/xml2emmet --follow --region us-east-1
 ```
 
-**Чрез SSH:**
-```powershell
-# Вземи SSH командата от outputs
-aws cloudformation describe-stacks `
-  --stack-name xml2emmet `
-  --query 'Stacks[0].Outputs[?OutputKey==`SSHCommand`].OutputValue' `
-  --output text
+**Чрез SSH от CloudShell** (ключът е вече наличен):
 
-# После:
-ssh -i xml2emmet-key.pem ec2-user@<ELASTIC_IP>
+```bash
+# Вземи Elastic IP
+ELASTIC_IP=$(aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' \
+  --output text --region us-east-1 | sed 's|http://||')
+
+ssh -i ~/.ssh/labsuser.pem ec2-user@$ELASTIC_IP
+```
+
+Вътре в EC2:
+
+```bash
 sudo tail -f /var/log/xml2emmet-init.log
 ```
 
@@ -176,14 +150,15 @@ sudo tail -f /var/log/xml2emmet-init.log
 
 ## Стъпка 5 — Тест на приложението
 
-1. Регистрирай се с потребител
-2. Направи няколко трансформации (XML → Emmet)
-3. Виж историята (History таб)
-4. Тествай S3 export:
+1. Отвори URL-а от Стъпка 3 в браузъра
+2. Регистрирай се
+3. Направи няколко трансформации (XML → Emmet)
+4. Виж историята (History таб)
+5. Тествай S3 export от CloudShell:
 
-```powershell
-# Вземи session cookie от браузъра (DevTools → Application → Cookies)
-curl -X POST http://<APP_URL>/api/history/export `
+```bash
+# Вземи session cookie от браузъра: DevTools (F12) → Application → Cookies → xml2emmet_sid
+curl -s -X POST http://<APP_URL>/api/history/export \
   -H "Cookie: xml2emmet_sid=<SESSION_COOKIE>"
 ```
 
@@ -193,16 +168,18 @@ curl -X POST http://<APP_URL>/api/history/export `
 
 ## Стъпка 6 — Teardown (след защитата)
 
-```powershell
-# Изтрий S3 обектите първо
-$BUCKET = aws cloudformation describe-stacks `
-  --stack-name xml2emmet `
-  --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' `
-  --output text
+```bash
+# Вземи bucket name
+BUCKET=$(aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].Outputs[?OutputKey==`S3BucketName`].OutputValue' \
+  --output text --region us-east-1)
+
+# Изтрий S3 обектите (иначе CF не може да изтрие bucket-а)
 aws s3 rm s3://$BUCKET --recursive
 
-# Изтрий стека
-aws cloudformation delete-stack --stack-name xml2emmet
+# Изтрий целия стек
+aws cloudformation delete-stack --stack-name xml2emmet --region us-east-1
 ```
 
 ---
