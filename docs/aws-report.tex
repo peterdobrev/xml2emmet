@@ -1,0 +1,141 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[bulgarian]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{booktabs}
+
+\geometry{margin=2.5cm}
+
+\definecolor{codebg}{rgb}{0.95,0.95,0.95}
+\lstset{
+  backgroundcolor=\color{codebg},
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+}
+
+\title{\textbf{Облачни технологии — AWS}\\
+       \large Разгръщане на xml2emmet в Amazon Web Services}
+\author{Денис Мустафа Каим\\
+        Фак. номер: 3MI0600294\\
+        Специалност: СИ, 3. курс\\
+        Преподавател: проф. д-р Милен Петров}
+\date{Юни 2026}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Описание на проекта}
+
+\textbf{xml2emmet} е уеб приложение за трансформация на XML в Emmet нотация.
+Разработено е съвместно с Петър Добрев като PHP 8.2 проект с REST API и SPA frontend.
+В рамките на курса приложението е разгърнато в AWS с EC2, RDS MySQL и S3,
+а инфраструктурата е описана като код чрез CloudFormation.
+
+Репозиторий: \url{https://github.com/peterdobrev/xml2emmet}, бранч \texttt{feat/aws-ec2-rds-s3}
+
+\section{Архитектура}
+
+\begin{verbatim}
+         Интернет
+             |
+         [Elastic IP :80]
+             |
+   +-----------------------+   публична подмрежа (10.0.1.0/24)
+   |   EC2 t3.micro        |
+   |   Amazon Linux 2023   |
+   |   Apache + PHP 8.2    |
+   +-----------+-----------+
+               | :3306
+   +-----------+-----------+   частна подмрежа (10.0.2-3.0/24)
+   |   RDS MySQL 8.0       |
+   |   db.t3.micro         |
+   +-----------------------+
+               |
+   +-----------+-----------+
+   |   S3 Bucket           |   JSON export, presigned URL (1 час)
+   +-----------------------+
+\end{verbatim}
+
+\section{Използвани AWS услуги}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}llp{7cm}@{}}
+\toprule
+\textbf{Услуга} & \textbf{Лекция} & \textbf{Роля} \\
+\midrule
+Amazon EC2         & 7    & Уеб сървър — Apache + PHP 8.2 \\
+Amazon RDS MySQL   & 8    & База данни — потребители, правила, история \\
+Amazon S3          & 4    & JSON export на история + presigned URL \\
+Amazon VPC         & 5--6 & Мрежова изолация, публична/частна подмрежа \\
+Security Groups    & 5--6 & EC2: порт 80, 22; RDS: порт 3306 само от EC2 \\
+SSM Parameter Store & 15  & Съхранение на DB credentials и S3 bucket \\
+CloudWatch Logs    & 16   & Лог група \texttt{/ec2/xml2emmet} \\
+CloudFormation     & --   & IaC за цялата инфраструктура \\
+\bottomrule
+\end{tabular}
+\caption{Използвани AWS услуги}
+\end{table}
+
+\section{CloudFormation}
+
+Файлът \texttt{deploy/cloudformation.yml} описва цялата инфраструктура.
+При деплой се създават VPC с публична и две частни подмрежи, security groups,
+RDS инстанция, S3 bucket, SSM параметри, CloudWatch лог група и EC2 с Elastic IP.
+
+EC2 инстанцията при първо стартиране автоматично инсталира PHP и Apache,
+клонира репото, инсталира AWS SDK, чете credentials от SSM и стартира приложението.
+
+\section{S3 интеграция}
+
+Потребителят може да експортира историята си като JSON файл в S3.
+Приложението качва файла и връща presigned URL, валиден 1 час:
+
+\begin{lstlisting}[language=php]
+$s3->putObject([
+    'Bucket' => $this->bucket,
+    'Key'    => "exports/user-{$userId}/{$timestamp}.json",
+    'Body'   => json_encode($rows),
+]);
+$url = $s3->createPresignedRequest(..., '+1 hour');
+\end{lstlisting}
+
+EC2 достъпва S3 чрез \texttt{LabInstanceProfile} — без hardcoded credentials.
+
+\section{SSM Parameter Store}
+
+Credential-ите не са записани в кода или конфигурационни файлове.
+При стартиране bootstrap скриптът ги чете от SSM и ги подава на Apache
+като environment variables:
+
+\begin{itemize}
+  \item \texttt{/xml2emmet/db/host}, \texttt{db/user}, \texttt{db/pass}
+  \item \texttt{/xml2emmet/s3/bucket}, \texttt{s3/region}
+\end{itemize}
+
+\section{Разлика от реализацията на Петър Добрев}
+
+\begin{table}[h]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & \textbf{Петър (Elastic Beanstalk)} & \textbf{Денис (EC2 + S3)} \\
+\midrule
+Compute     & Elastic Beanstalk & EC2 директно \\
+Database    & RDS MySQL         & RDS MySQL \\
+Storage     & ---               & S3 (JSON export) \\
+Credentials & .ebextensions     & SSM Parameter Store \\
+IaC         & .ebextensions     & CloudFormation \\
+\bottomrule
+\end{tabular}
+\caption{Сравнение на реализациите}
+\end{table}
+
+\end{document}
