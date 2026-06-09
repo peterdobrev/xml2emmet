@@ -1,7 +1,7 @@
 Факултетен номер : 3MI0600294
 Име               : Денис Мустафа Каим
 Специалност       : Компютърни системи и информационни технологии (СИ), 3. курс
-Преподавател      : Милен Петров
+Преподавател      : проф. д-р Милен Петров
 Дисциплина        : Облачни технологии (AWS)
 
 Проект            : xml2emmet — AWS разширение
@@ -19,11 +19,22 @@
   CloudWatch Logs       — логове на приложението, лекция 16
   CloudFormation        — IaC за цялата инфраструктура
 
-Деплой
-------
-  Вижте deploy/cloudformation.yml и docs/aws-deployment.md
+Съдържание на архива
+--------------------
+  README.txt                   — този файл
+  docs/aws-report.tex          — документация (LaTeX)
+  docs/aws-report.pdf          — документация (PDF)
+  docs/aws-deployment.md       — инструкции за деплой
+  deploy/cloudformation.yml    — CloudFormation шаблон (IaC)
+  src/Aws/HistoryExporter.php  — S3 интеграция
+  src/Config.php               — конфигурация с AWS env vars
+  public/index.php             — front controller с AWS routes
+  composer.json                — зависимости (aws/aws-sdk-php)
+  .env.example                 — пример за env конфигурация
+  video.mp4                    — демо видео
 
-URL на приложението   
--------------------
-  http://54.86.209.220/app.html
-  (достъпен докато AWS Academy Learner Lab сесията е активна)
+AWS Academy — направени упражнения и тестове
+--------------------------------------------
+  AWS Academy Learner Lab [161034]        — използван за целия деплой
+  AWS Academy Cloud Foundations [161029]  — модули: ...
+  AWS Academy Cloud Architecting [161030] — модули: ...

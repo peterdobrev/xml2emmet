@@ -1,13 +1,14 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[12pt]{article}
+
 \usepackage[utf8]{inputenc}
 \usepackage[bulgarian]{babel}
-\usepackage{geometry}
+\usepackage{amssymb}
+\usepackage{amsmath}
 \usepackage{hyperref}
+\usepackage{booktabs}
 \usepackage{listings}
 \usepackage{xcolor}
-\usepackage{booktabs}
-
-\geometry{margin=2.5cm}
+\usepackage[top=1.3in, bottom=1.5in, left=1.3in, right=1.3in]{geometry}
 
 \definecolor{codebg}{rgb}{0.95,0.95,0.95}
 \lstset{
@@ -17,86 +18,192 @@
   frame=single,
 }
 
-\title{\textbf{Облачни технологии — AWS}\\
-       \large Разгръщане на xml2emmet в Amazon Web Services}
-\author{Денис Мустафа Каим\\
-        Фак. номер: 3MI0600294\\
-        Специалност: СИ, 3. курс\\
-        Преподавател: проф. д-р Милен Петров}
-\date{Юни 2026}
-
 \begin{document}
+    \begin{center}
+        \LARGE{\textbf{Тема: XML2Emmet — разгръщане в AWS с EC2, RDS и S3}}
 
-\maketitle
-\tableofcontents
-\newpage
+        \bigskip
+        \Large{Предмет: Приложно-програмни интерфейси за работа с облачни архитектури с Amazon Web Services (AWS)}
 
-\section{Описание на проекта}
+        \medskip
+        \Large{Изготвил: Денис Мустафа Каим, фн: 3MI0600294, имейл: deniskaim86@gmail.com}
 
-\textbf{xml2emmet} е уеб приложение за трансформация на XML в Emmet нотация.
-Разработено е съвместно с Петър Добрев като PHP 8.2 проект с REST API и SPA frontend.
-В рамките на курса приложението е разгърнато в AWS с EC2, RDS MySQL и S3,
-а инфраструктурата е описана като код чрез CloudFormation.
+        \medskip
+        \Large{Лектор: проф. д-р Милен Петров, година: 2026}
 
-Репозиторий: \url{https://github.com/peterdobrev/xml2emmet}, бранч \texttt{feat/aws-ec2-rds-s3}
+        \bigskip
+    \end{center}
 
-\section{Архитектура}
+    \tableofcontents
+    \bigskip
+    \newpage
 
-\begin{verbatim}
-         Интернет
-             |
-         [Elastic IP :80]
-             |
-   +-----------------------+   публична подмрежа (10.0.1.0/24)
-   |   EC2 t3.micro        |
-   |   Amazon Linux 2023   |
-   |   Apache + PHP 8.2    |
-   +-----------+-----------+
-               | :3306
-   +-----------+-----------+   частна подмрежа (10.0.2-3.0/24)
-   |   RDS MySQL 8.0       |
-   |   db.t3.micro         |
-   +-----------------------+
-               |
-   +-----------+-----------+
-   |   S3 Bucket           |   JSON export, presigned URL (1 час)
-   +-----------------------+
-\end{verbatim}
 
-\section{Използвани AWS услуги}
+\section{Условие}
+
+\noindent Задачата е да се разгърне съществуващ уеб проект от курса по Уеб технологии в Amazon Web Services, като се добави нова функционалност, използваща специфични AWS услуги. Всеки студент разширява проекта самостоятелно, като избира услуги, различни от тези на останалите членове на групата.
+
+\medskip
+
+\noindent Проектът \textbf{xml2emmet} е уеб приложение за трансформация на \textbf{XML} към \textbf{Emmet} нотация, разработен съвместно с Петър Добрев в курса по Уеб технологии. За AWS разширението е добавена функционалност за export на история в Amazon S3, а приложението е хоствано на Amazon EC2 с база данни в Amazon RDS.
+
+
+\section{Въведение}
+
+xml2emmet позволява на потребителите да трансформират XML и HTML структури в Emmet нотация. Приложението е изградено с PHP 8.2, REST API и SPA frontend.
+
+\noindent За разгръщането в AWS са използвани следните услуги:
+
+\begin{itemize}
+    \item \textbf{Amazon EC2} — хостване на уеб сървъра.
+
+    \item \textbf{Amazon RDS MySQL} — съхранение на потребителски данни и история.
+
+    \item \textbf{Amazon S3} — export на история като JSON файл с presigned URL.
+
+    \item \textbf{SSM Parameter Store} — сигурно съхранение на credentials.
+
+    \item \textbf{CloudWatch Logs} — логове на приложението.
+
+    \item \textbf{CloudFormation} — инфраструктурата като код.
+\end{itemize}
+
+
+\section{Теория}
+
+\noindent \textbf{Amazon EC2} (Elastic Compute Cloud) е услуга за виртуални машини в облака. Позволява стартиране на сървъри с различни операционни системи и конфигурации. В проекта се използва инстанция тип t3.micro с Amazon Linux 2023.
+
+\medskip
+
+\noindent \textbf{Amazon RDS} (Relational Database Service) управлява релационни бази данни в облака. Осигурява автоматични backup-и, мониторинг и висока наличност. В проекта се използва MySQL 8.0 на db.t3.micro инстанция.
+
+\medskip
+
+\noindent \textbf{Amazon S3} (Simple Storage Service) е обектно хранилище с висока надеждност и мащабируемост. Поддържа presigned URL-и — временни линкове за достъп до обекти без публичен достъп до bucket-а.
+
+\medskip
+
+\noindent \textbf{SSM Parameter Store} позволява сигурно съхранение на конфигурационни стойности и тайни. EC2 инстанцията ги чете при стартиране чрез AWS CLI.
+
+\medskip
+
+\noindent \textbf{AWS CloudFormation} описва цялата инфраструктура като YAML шаблон. Един файл създава VPC, подмрежи, security groups, RDS, S3, SSM параметри и EC2.
+
+
+\section{Използвани технологии}
+
+\begin{itemize}
+    \item \textbf{Amazon EC2} - t3.micro, Amazon Linux 2023, Apache 2.4, PHP 8.2.
+
+    \item \textbf{Amazon RDS MySQL} - версия 8.0, db.t3.micro, 20 GB gp2.
+
+    \item \textbf{Amazon S3} - обектно хранилище за JSON export файлове.
+
+    \item \textbf{Amazon VPC} - CIDR 10.0.0.0/16, публична и частна подмрежа.
+
+    \item \textbf{SSM Parameter Store} - съхранение на DB credentials и S3 bucket.
+
+    \item \textbf{CloudWatch Logs} - лог група \texttt{/ec2/xml2emmet}, ретенция 7 дни.
+
+    \item \textbf{AWS CloudFormation} - IaC шаблон за цялата инфраструктура.
+
+    \item \textbf{aws/aws-sdk-php} - версия \^{}3.318, PHP библиотека за AWS услуги.
+\end{itemize}
+
+
+\section{Инсталация и настройки}
+
+\noindent\textbf{Стъпка 1.} Отвори AWS CloudShell от конзолата на AWS Academy Learner Lab и клонирай репото:
+
+\begin{lstlisting}[language=bash]
+git clone -b feat/aws-ec2-rds-s3 \
+  https://github.com/peterdobrev/xml2emmet.git
+cd xml2emmet
+\end{lstlisting}
+
+\medskip
+
+\noindent\textbf{Стъпка 2.} Разгърни CloudFormation стека с една команда. Стекът създава цялата инфраструктура автоматично:
+
+\begin{lstlisting}[language=bash]
+aws cloudformation deploy \
+  --template-file deploy/cloudformation.yml \
+  --stack-name xml2emmet \
+  --parameter-overrides \
+      KeyPairName=vockey \
+      DBMasterPassword=<парола> \
+      GithubRepoUrl=https://github.com/peterdobrev/xml2emmet.git \
+      AppBranch=feat/aws-ec2-rds-s3 \
+  --region us-east-1
+\end{lstlisting}
+
+\medskip
+
+\noindent\textbf{Стъпка 3.} Изчакай ~12 минути (RDS отнема най-много). След \texttt{CREATE\_COMPLETE} вземи URL-а:
+
+\begin{lstlisting}[language=bash]
+aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' \
+  --output text --region us-east-1
+\end{lstlisting}
+
+
+
+\section{Кратко ръководство за потребителя}
+
+Приложението е достъпно на адреса, върнат от CloudFormation. Потребителят отваря \texttt{/app.html} в браузъра, регистрира се и може да:
+
+\begin{itemize}
+    \item трансформира XML/HTML към Emmet нотация,
+    \item преглежда история на трансформациите,
+    \item експортира историята си като JSON файл в S3.
+\end{itemize}
+
+
+\noindent За S3 export потребителят извиква \texttt{POST /api/history/export}. Отговорът съдържа presigned URL, валиден 1 час:
+
+\begin{lstlisting}[language=bash]
+curl -s -X POST http://<APP_URL>/api/history/export \
+  -H "Cookie: xml2emmet_sid=<session>"
+\end{lstlisting}
+
+
+
+\section{Примерни данни}
+
+Примерна трансформация:
 
 \begin{table}[h]
-\centering
-\begin{tabular}{@{}llp{7cm}@{}}
-\toprule
-\textbf{Услуга} & \textbf{Лекция} & \textbf{Роля} \\
-\midrule
-Amazon EC2         & 7    & Уеб сървър — Apache + PHP 8.2 \\
-Amazon RDS MySQL   & 8    & База данни — потребители, правила, история \\
-Amazon S3          & 4    & JSON export на история + presigned URL \\
-Amazon VPC         & 5--6 & Мрежова изолация, публична/частна подмрежа \\
-Security Groups    & 5--6 & EC2: порт 80, 22; RDS: порт 3306 само от EC2 \\
-SSM Parameter Store & 15  & Съхранение на DB credentials и S3 bucket \\
-CloudWatch Logs    & 16   & Лог група \texttt{/ec2/xml2emmet} \\
-CloudFormation     & --   & IaC за цялата инфраструктура \\
-\bottomrule
+\caption{Вход и изход на трансформацията}
+\center
+\begin{tabular}{ |p{6cm}|p{6cm}| }
+ \hline
+ \textbf{XML вход} & \textbf{Emmet изход} \\ \hline
+ \texttt{<ul><li>Item</li></ul>} & \texttt{ul>li\{Item\}} \\ \hline
+ \texttt{<div class="box"><p>Text</p></div>} & \texttt{div.box>p\{Text\}} \\ \hline
 \end{tabular}
-\caption{Използвани AWS услуги}
 \end{table}
 
-\section{CloudFormation}
+\noindent Примерен S3 export файл (\texttt{exports/user-1/2026-06-09T070004Z.json}):
 
-Файлът \texttt{deploy/cloudformation.yml} описва цялата инфраструктура.
-При деплой се създават VPC с публична и две частни подмрежи, security groups,
-RDS инстанция, S3 bucket, SSM параметри, CloudWatch лог група и EC2 с Elastic IP.
+\begin{lstlisting}
+[
+  {
+    "id": 1,
+    "input": "<ul><li>Item</li></ul>",
+    "output": "ul>li{Item}",
+    "created_at": "2026-06-09 07:00:00"
+  }
+]
+\end{lstlisting}
 
-EC2 инстанцията при първо стартиране автоматично инсталира PHP и Apache,
-клонира репото, инсталира AWS SDK, чете credentials от SSM и стартира приложението.
 
-\section{S3 интеграция}
+\section{Описание на програмния код}
 
-Потребителят може да експортира историята си като JSON файл в S3.
-Приложението качва файла и връща presigned URL, валиден 1 час:
+\subsection{HistoryExporter.php}
+
+Файлът \texttt{src/Aws/HistoryExporter.php} използва AWS SDK за PHP за качване на JSON в S3 и генериране на presigned URL:
 
 \begin{lstlisting}[language=php]
 $s3->putObject([
@@ -104,38 +211,59 @@ $s3->putObject([
     'Key'    => "exports/user-{$userId}/{$timestamp}.json",
     'Body'   => json_encode($rows),
 ]);
-$url = $s3->createPresignedRequest(..., '+1 hour');
+$cmd = $s3->getCommand('GetObject', [
+    'Bucket' => $this->bucket,
+    'Key'    => $key,
+]);
+$url = $s3->createPresignedRequest($cmd, '+1 hour')->getUri();
 \end{lstlisting}
 
-EC2 достъпва S3 чрез \texttt{LabInstanceProfile} — без hardcoded credentials.
+\subsection{CloudFormation шаблон}
 
-\section{SSM Parameter Store}
+Файлът \texttt{deploy/cloudformation.yml} описва цялата инфраструктура. EC2 инстанцията съдържа UserData скрипт, който при първо стартиране инсталира Apache, PHP, клонира репото, чете credentials от SSM и стартира приложението.
 
-Credential-ите не са записани в кода или конфигурационни файлове.
-При стартиране bootstrap скриптът ги чете от SSM и ги подава на Apache
-като environment variables:
 
-\begin{itemize}
-  \item \texttt{/xml2emmet/db/host}, \texttt{db/user}, \texttt{db/pass}
-  \item \texttt{/xml2emmet/s3/bucket}, \texttt{s3/region}
-\end{itemize}
+\section{Приноси на студента, ограничения и възможности за бъдещо развитие}
 
-\section{Разлика от реализацията на Петър Добрев}
+В рамките на проекта са реализирани: разгръщане на приложението в AWS чрез CloudFormation, интеграция с Amazon S3 за export на история с presigned URL, и използване на SSM Parameter Store за сигурно управление на credentials.
 
-\begin{table}[h]
-\centering
-\begin{tabular}{@{}lll@{}}
-\toprule
- & \textbf{Петър (Elastic Beanstalk)} & \textbf{Денис (EC2 + S3)} \\
-\midrule
-Compute     & Elastic Beanstalk & EC2 директно \\
-Database    & RDS MySQL         & RDS MySQL \\
-Storage     & ---               & S3 (JSON export) \\
-Credentials & .ebextensions     & SSM Parameter Store \\
-IaC         & .ebextensions     & CloudFormation \\
-\bottomrule
-\end{tabular}
-\caption{Сравнение на реализациите}
-\end{table}
+\medskip
+
+\noindent Ограничение е, че приложението е достъпно само по HTTP (без SSL сертификат). Като бъдещо развитие може да се добави Amazon CloudFront с ACM сертификат за HTTPS, или Auto Scaling Group за хоризонтално мащабиране.
+
+
+\section{Какво научих}
+
+В хода на проекта се запознах практически с разгръщането на уеб приложение в AWS — от конфигурацията на VPC и Security Groups до автоматизирането на целия процес с CloudFormation. Научих как EC2 инстанция може да получава credentials сигурно чрез SSM Parameter Store без hardcoded пароли в кода. Разбрах как работят presigned URL-ите в S3 и как Instance Profile дава права на EC2 да достъпва AWS услуги без допълнителна конфигурация.
+
+
+\section{Списък с фигури и таблици}
+
+\listoftables
+
+
+\section{Използвани източници}
+
+\noindent\href{https://docs.aws.amazon.com/cloudformation/}{[1] AWS CloudFormation Documentation}
+
+\medskip
+
+\noindent\href{https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/}{[2] Amazon EC2 User Guide}
+
+\medskip
+
+\noindent\href{https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/}{[3] Amazon RDS User Guide}
+
+\medskip
+
+\noindent\href{https://docs.aws.amazon.com/AmazonS3/latest/userguide/}{[4] Amazon S3 User Guide}
+
+\medskip
+
+\noindent\href{https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html}{[5] AWS Systems Manager Parameter Store}
+
+\medskip
+
+\noindent\href{https://github.com/aws/aws-sdk-php}{[6] AWS SDK for PHP — GitHub}
 
 \end{document}
