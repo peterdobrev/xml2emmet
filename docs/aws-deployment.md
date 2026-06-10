@@ -115,8 +115,8 @@ aws cloudformation describe-stacks \
 
 Отвори URL-а в браузъра → трябва да видиш login страницата.
 
-> Ако страницата не се зарежда веднага, изчакай 2-3 мин и презареди.
-> Bootstrap скриптът (инсталация на PHP, Apache, SDK, миграция) тече ~3-4 мин след EC2 start.
+> Ако страницата не се зарежда веднага след CREATE_COMPLETE, изчакай 4-6 мин и презареди.
+> EC2 bootstrap скриптът (инсталация на PHP, Apache, AWS SDK, DB миграция) тече ~4-5 мин след старта на инстанцията.
 
 ---
 
@@ -128,16 +128,16 @@ aws cloudformation describe-stacks \
 aws logs tail /ec2/xml2emmet --follow --region us-east-1
 ```
 
-**Чрез SSH от CloudShell** (ключът е вече наличен):
+**Чрез SSH от CloudShell** (изтегли ключа: AWS Details → Download PEM → качи в CloudShell с Upload):
 
 ```bash
-# Вземи Elastic IP
+chmod 400 labsuser.pem
 ELASTIC_IP=$(aws cloudformation describe-stacks \
   --stack-name xml2emmet \
   --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' \
   --output text --region us-east-1 | sed 's|http://||')
 
-ssh -i ~/.ssh/labsuser.pem ec2-user@$ELASTIC_IP
+ssh -i labsuser.pem ec2-user@$ELASTIC_IP
 ```
 
 Вътре в EC2:
@@ -150,15 +150,22 @@ sudo tail -f /var/log/xml2emmet-init.log
 
 ## Стъпка 5 — Тест на приложението
 
-1. Отвори URL-а от Стъпка 3 в браузъра
+1. Отвори `<URL>/app.html` в браузъра
 2. Регистрирай се
-3. Направи няколко трансформации (XML → Emmet)
-4. Виж историята (History таб)
-5. Тествай S3 export от CloudShell:
+3. Направи поне една трансформация (XML → Emmet)
+4. Отиди в **History** таба
+5. Натисни **[EXPORT TO S3]** — след секунда се появява `Download JSON` линк (presigned URL, валиден 1 час)
+
+**Алтернативен тест от командния ред:**
 
 ```bash
-# Вземи session cookie от браузъра: DevTools (F12) → Application → Cookies → xml2emmet_sid
-curl -s -X POST http://<APP_URL>/api/history/export \
+APP_URL=$(aws cloudformation describe-stacks \
+  --stack-name xml2emmet \
+  --query 'Stacks[0].Outputs[?OutputKey==`AppURL`].OutputValue' \
+  --output text --region us-east-1)
+
+# Вземи session cookie: F12 → Application → Cookies → xml2emmet_sid
+curl -s -X POST $APP_URL/api/history/export \
   -H "Cookie: xml2emmet_sid=<SESSION_COOKIE>"
 ```
 
@@ -182,14 +189,3 @@ aws s3 rm s3://$BUCKET --recursive
 aws cloudformation delete-stack --stack-name xml2emmet --region us-east-1
 ```
 
----
-
-## Разлика от Петър (Elastic Beanstalk + RDS)
-
-| | Петър (EBS + RDS) | Този проект (EC2 + RDS + S3) |
-|---|---|---|
-| Compute | Elastic Beanstalk управлява EC2 | EC2 директно — Apache, PHP, env vars |
-| Database | RDS MySQL | RDS MySQL |
-| Storage | няма | **S3** — JSON export на история |
-| Credentials | .ebextensions | **SSM Parameter Store** |
-| IaC | .ebextensions YAML | **CloudFormation** |
