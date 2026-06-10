@@ -4,13 +4,6 @@ namespace App\Aws;
 
 use Aws\S3\S3Client;
 
-/**
- * Uploads a user's transformation history as a JSON file to S3
- * and returns a one-hour presigned download URL.
- *
- * Credentials come from the EC2 instance profile automatically —
- * no access keys are stored in the application.
- */
 final class HistoryExporter
 {
     private S3Client $s3;

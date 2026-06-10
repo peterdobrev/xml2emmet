@@ -39,7 +39,7 @@ try {
 
     $req = Request::fromGlobals();
 
-    // ALB health check — must respond before DB connection attempt.
+    // Health check endpoint.
     if ($req->method === 'GET' && $req->path === '/api/health') {
         Response::json(200, ['status' => 'ok'])->send();
         return;

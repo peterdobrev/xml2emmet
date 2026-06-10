@@ -33,7 +33,7 @@ final class Config {
             secureCookie: ($env['XML2EMMET_SECURE_COOKIE'] ?? '0') === '1',
             debug:        ($env['XML2EMMET_DEBUG']        ?? '0') === '1',
             s3Bucket:     $env['XML2EMMET_S3_BUCKET']    ?? '',
-            awsRegion:    $env['XML2EMMET_AWS_REGION']   ?? 'eu-central-1',
+            awsRegion:    $env['XML2EMMET_AWS_REGION']   ?? 'us-east-1',
         );
     }
 }
