@@ -16,6 +16,10 @@ export function render(container, { api }) {
 
     container.innerHTML = `
       <h2>History</h2>
+      <div style="margin-bottom:10px">
+        <button id="export-btn">[EXPORT TO S3]</button>
+        <span id="export-status" style="margin-left:10px;font-size:12px"></span>
+      </div>
       <table>
         <thead>
           <tr><th>Direction</th><th>Input</th><th>Date</th></tr>
@@ -43,6 +47,20 @@ export function render(container, { api }) {
       tr.addEventListener('click', () => toggleExpand(tbody, item, tr));
       tbody.appendChild(tr);
       if (expandedId === item.id) renderDetail(tbody, item, tr);
+    });
+
+    container.querySelector('#export-btn').addEventListener('click', async () => {
+      const btn = container.querySelector('#export-btn');
+      const status = container.querySelector('#export-status');
+      btn.disabled = true;
+      status.textContent = 'Uploading…';
+      const res = await api.historyExport();
+      btn.disabled = false;
+      if (!res.ok) {
+        status.textContent = `Error: ${res.message}`;
+        return;
+      }
+      status.innerHTML = `<a href="${escHtml(res.data.download_url)}" target="_blank">Download JSON</a> (valid 1h)`;
     });
 
     container.querySelector('#prev-btn').addEventListener('click', () => { page--; load(); });

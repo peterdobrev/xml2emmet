@@ -53,5 +53,8 @@ export const rulesDelete = (id) =>
 export const historyList = (page, perPage) =>
   _fetch('GET', `/api/history?page=${page}&per_page=${perPage}`);
 
+export const historyExport = () =>
+  _fetch('POST', '/api/history/export');
+
 export const stats = (kind, input) =>
   _fetch('POST', '/api/stats', { kind, input });
