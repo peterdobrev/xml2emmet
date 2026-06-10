@@ -245,9 +245,9 @@ Resources:
           exec > >(tee /var/log/xml2emmet-init.log | logger -t xml2emmet-init) 2>&1
 
           # 1. Пакети
-          dnf update -y
+          dnf update -y || true
           dnf install -y php8.2 php8.2-pdo php8.2-mysqlnd \
-                         php8.2-mbstring httpd git
+                         php8.2-mbstring httpd git amazon-cloudwatch-agent
 
           # 2. Composer
           curl -sS https://getcomposer.org/installer \
@@ -306,6 +306,32 @@ Resources:
           # 8. Старт на Apache
           systemctl enable httpd
           systemctl start httpd
+
+          # 9. CloudWatch Logs агент (пакетът вече е инсталиран в стъпка 1)
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'CWEOF'
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+          {
+            "file_path": "/var/log/xml2emmet-init.log",
+            "log_group_name": "/ec2/xml2emmet",
+            "log_stream_name": "init"
+          },
+          {
+            "file_path": "/var/log/httpd/xml2emmet-error.log",
+            "log_group_name": "/ec2/xml2emmet",
+            "log_stream_name": "apache-error"
+          }
+        ]
+      }
+    }
+  }
+}
+CWEOF
+          systemctl enable amazon-cloudwatch-agent
+          systemctl start amazon-cloudwatch-agent
 
   ElasticIP:
     Type: AWS::EC2::EIP
