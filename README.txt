@@ -36,5 +36,5 @@
 AWS Academy — направени упражнения и тестове
 --------------------------------------------
   AWS Academy Learner Lab [161034]        — използван за целия деплой
-  AWS Academy Cloud Foundations [161029]  — модули: ...
-  AWS Academy Cloud Architecting [161030] — модули: ...
+  AWS Academy Cloud Foundations [161029]  — Knowledge Checks: модули 1, 2, 3, 4, 7; Lab 4: Working with EBS (100/100)
+  AWS Academy Cloud Architecting [161030] — Knowledge Checks: модули 2, 3, 4; Guided Lab: Exploring AWS IAM (56/56)
