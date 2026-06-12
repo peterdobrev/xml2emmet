@@ -1,48 +1,36 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  xml2emmet — EC2 + RDS MySQL + S3
-  Услуги: EC2 (лекция 7), RDS MySQL (лекция 8), S3 (лекция 4),
-          VPC + Security Groups (лекции 5-6), SSM Parameter Store (лекция 15),
-          CloudWatch (лекция 16)
-  Съвместим с AWS Academy Learner Lab — използва съществуващия LabInstanceProfile.
+  xml2emmet infrastructure: EC2 + RDS MySQL + S3 + SSM + CloudWatch.
+  Compatible with AWS Academy Learner Lab (uses existing LabInstanceProfile).
 
-# ---------------------------------------------------------------------------
-# Parameters
-# ---------------------------------------------------------------------------
 Parameters:
   KeyPairName:
     Type: AWS::EC2::KeyPair::KeyName
-    Description: Съществуваща EC2 Key Pair за SSH достъп
+    Description: Existing EC2 Key Pair for SSH access
 
   DBMasterPassword:
     Type: String
     NoEcho: true
     MinLength: 8
-    Description: Парола за RDS root потребителя (мин. 8 символа)
+    Description: RDS master password (min. 8 characters)
 
   GithubRepoUrl:
     Type: String
-    Description: URL на GitHub репото (напр. https://github.com/USER/xml2emmet.git)
+    Description: GitHub repository URL (e.g. https://github.com/USER/xml2emmet.git)
 
   AppBranch:
     Type: String
     Default: feat/aws-ec2-rds-s3
-    Description: Git клон за деплойване
+    Description: Git branch to deploy
 
   LabInstanceProfile:
     Type: String
     Default: LabInstanceProfile
     Description: >
-      Името на Instance Profile от AWS Academy Learner Lab.
-      По подразбиране "LabInstanceProfile" — не го сменяй освен ако
-      Academy не ти даде различно.
+      Instance Profile name from AWS Academy Learner Lab.
+      Default is "LabInstanceProfile" — do not change unless Academy provides a different one.
 
-# ---------------------------------------------------------------------------
-# Resources
-# ---------------------------------------------------------------------------
 Resources:
-
-  # ── VPC (лекция 5-6) ──────────────────────────────────────────────────────
 
   VPC:
     Type: AWS::EC2::VPC
@@ -72,7 +60,6 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags: [{ Key: Name, Value: xml2emmet-public }]
 
-  # RDS изисква subnet group с поне 2 зони
   PrivateSubnetA:
     Type: AWS::EC2::Subnet
     Properties:
@@ -108,8 +95,6 @@ Resources:
       SubnetId:     !Ref PublicSubnet
       RouteTableId: !Ref PublicRouteTable
 
-  # ── Security Groups (лекция 5-6) ─────────────────────────────────────────
-
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -131,8 +116,6 @@ Resources:
           ToPort:                3306
           SourceSecurityGroupId: !Ref EC2SecurityGroup
       Tags: [{ Key: Name, Value: xml2emmet-rds-sg }]
-
-  # ── RDS MySQL (лекция 8) ──────────────────────────────────────────────────
 
   DBSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
@@ -161,8 +144,6 @@ Resources:
       PubliclyAccessible:    false
       Tags: [{ Key: Name, Value: xml2emmet-rds }]
 
-  # ── S3 (лекция 4) — за експорт на история ────────────────────────────────
-
   HistoryBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -177,8 +158,6 @@ Resources:
         IgnorePublicAcls:      true
         RestrictPublicBuckets: true
       Tags: [{ Key: Name, Value: xml2emmet-history }]
-
-  # ── SSM Parameter Store (лекция 15) ──────────────────────────────────────
 
   SSMDbHost:
     Type: AWS::SSM::Parameter
@@ -215,16 +194,11 @@ Resources:
       Type:  String
       Value: !Ref AWS::Region
 
-  # ── CloudWatch Log Group (лекция 16) ─────────────────────────────────────
-
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName:    /ec2/xml2emmet
       RetentionInDays: 7
-
-  # ── EC2 Instance (лекция 7) ───────────────────────────────────────────────
-  # Използва LabInstanceProfile от AWS Academy — не създаваме нови IAM роли.
 
   EC2Instance:
     Type: AWS::EC2::Instance
@@ -244,21 +218,17 @@ Resources:
           export HOME=/root
           exec > >(tee /var/log/xml2emmet-init.log | logger -t xml2emmet-init) 2>&1
 
-          # 1. Пакети
           dnf update -y || true
           dnf install -y php8.2 php8.2-pdo php8.2-mysqlnd \
                          php8.2-mbstring httpd git amazon-cloudwatch-agent
 
-          # 2. Composer
           curl -sS https://getcomposer.org/installer \
             | php -- --install-dir=/usr/local/bin --filename=composer
 
-          # 3. Клониране на приложението
           git clone --branch ${AppBranch} ${GithubRepoUrl} /var/www/html/xml2emmet
           cd /var/www/html/xml2emmet
           COMPOSER_ALLOW_SUPERUSER=1 composer update --no-interaction --no-dev --optimize-autoloader
 
-          # 4. Credentials от SSM Parameter Store
           REGION="${AWS::Region}"
           DB_HOST=$(aws ssm get-parameter --region $REGION \
                       --name /xml2emmet/db/host --query 'Parameter.Value' --output text)
@@ -269,7 +239,6 @@ Resources:
           S3_BUCKET=$(aws ssm get-parameter --region $REGION \
                         --name /xml2emmet/s3/bucket --query 'Parameter.Value' --output text)
 
-          # 5. Apache env vars
           cat > /etc/httpd/conf.d/xml2emmet-env.conf <<ENVEOF
           SetEnv XML2EMMET_DB_HOST     $DB_HOST
           SetEnv XML2EMMET_DB_USER     $DB_USER
@@ -281,7 +250,6 @@ Resources:
           SetEnv XML2EMMET_DEBUG       0
           ENVEOF
 
-          # 6. Apache VirtualHost
           cat > /etc/httpd/conf.d/xml2emmet.conf <<VHOSTEOF
           <VirtualHost *:80>
               DocumentRoot /var/www/html/xml2emmet/public
@@ -297,17 +265,14 @@ Resources:
 
           chown -R apache:apache /var/www/html/xml2emmet
 
-          # 7. Миграция на базата данни
           XML2EMMET_DB_HOST=$DB_HOST \
           XML2EMMET_DB_USER=$DB_USER \
           XML2EMMET_DB_PASS=$DB_PASS \
           php /var/www/html/xml2emmet/bin/migrate.php
 
-          # 8. Старт на Apache
           systemctl enable httpd
           systemctl start httpd
 
-          # 9. CloudWatch Logs агент (пакетът вече е инсталиран в стъпка 1)
           cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<CWEOF
           {"logs":{"logs_collected":{"files":{"collect_list":[{"file_path":"/var/log/xml2emmet-init.log","log_group_name":"/ec2/xml2emmet","log_stream_name":"init"},{"file_path":"/var/log/httpd/xml2emmet-error.log","log_group_name":"/ec2/xml2emmet","log_stream_name":"apache-error"}]}}}}
           CWEOF
@@ -320,22 +285,19 @@ Resources:
       InstanceId: !Ref EC2Instance
       Tags: [{ Key: Name, Value: xml2emmet-eip }]
 
-# ---------------------------------------------------------------------------
-# Outputs
-# ---------------------------------------------------------------------------
 Outputs:
   AppURL:
-    Description: Публичен адрес на приложението
+    Description: Public application URL
     Value: !Sub 'http://${ElasticIP}'
 
   RDSEndpoint:
-    Description: RDS endpoint (за справка)
+    Description: RDS endpoint address
     Value: !GetAtt RDSInstance.Endpoint.Address
 
   S3BucketName:
-    Description: S3 bucket за история
+    Description: S3 bucket for history exports
     Value: !Ref HistoryBucket
 
   SSHCommand:
-    Description: Команда за SSH достъп
+    Description: SSH command for EC2 access
     Value: !Sub 'ssh -i ${KeyPairName}.pem ec2-user@${ElasticIP}'
