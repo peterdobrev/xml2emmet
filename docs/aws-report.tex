@@ -9,6 +9,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage[top=1.3in, bottom=1.5in, left=1.3in, right=1.3in]{geometry}
+\usepackage{graphicx}
 
 \definecolor{codebg}{rgb}{0.95,0.95,0.95}
 \lstset{
@@ -148,6 +149,12 @@ aws cloudformation describe-stacks \
   --output text --region us-east-1
 \end{lstlisting}
 
+\begin{figure}[h!]
+\centering
+  \includegraphics[width=0.9\textwidth]{fig-aws}
+  \caption{CloudFormation Outputs след успешен деплой}
+\end{figure}
+
 
 
 \section{Кратко ръководство за потребителя}
@@ -160,6 +167,12 @@ aws cloudformation describe-stacks \
     \item експортира историята си като JSON файл в S3.
 \end{itemize}
 
+
+\begin{figure}[h!]
+\centering
+  \includegraphics[width=0.9\textwidth]{fig-app}
+  \caption{Приложението xml2emmet — трансформация на HTML към Emmet нотация}
+\end{figure}
 
 \noindent За S3 export потребителят извиква \texttt{POST /api/history/export}. Отговорът съдържа presigned URL, валиден 1 час:
 
@@ -240,6 +253,7 @@ $url = $s3->createPresignedRequest($cmd, '+1 hour')->getUri();
 \section{Списък с фигури и таблици}
 
 \listoftables
+\listoffigures
 
 
 \section{Използвани източници}
