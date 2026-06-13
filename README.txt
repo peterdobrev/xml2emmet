@@ -7,7 +7,7 @@
 Проект            : xml2emmet — AWS разширение
 Репо              : https://github.com/peterdobrev/xml2emmet
 Бранч             : feat/aws-ec2-rds-s3
-Съвместно с       : Петър Добрев (основно приложение в курса по WEB)
+
 
 Използвани AWS услуги
 ---------------------
